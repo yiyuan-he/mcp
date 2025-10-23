@@ -1,0 +1,19 @@
+[
+  {
+    "id": "ec2_python_flask",
+    "description": "Enable Application Signals for EC2 Python Flask application",
+    "platform": "ec2",
+    "language": "python",
+    "framework": "flask",
+    "iac_directory": "infrastructure/ec2/cdk",
+    "app_directory": "sample-apps/python/flask",
+    "mock_project_path": "/Users/yiyuanh/projects/agentic-enablement-eval",
+    "validation_rubric": [
+      "CloudWatchAgentServerPolicy IAM managed policy is attached to the EC2 instance role in the CDK stack",
+      "aws-opentelemetry-distro Python package is added to the project's dependency specification (check requirements.txt, pyproject.toml, or Dockerfile pip install commands)",
+      "If the application uses Docker, verify the Dockerfile includes aws-opentelemetry-distro installation",
+      "Modified files have no syntax errors (TypeScript, Python, YAML, JSON, etc.)",
+      "Existing code is preserved with no major unintended deletions or breaking changes"
+    ]
+  }
+]
