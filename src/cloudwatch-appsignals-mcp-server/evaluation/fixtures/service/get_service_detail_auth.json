@@ -1,0 +1,58 @@
+{
+  "service_name": "auth-service",
+  "environment": "eks:production",
+  "platform": "EKS",
+  "attributes": {
+    "cluster": "production",
+    "namespace": "default",
+    "deployment": "auth-service-v1"
+  },
+  "metrics_summary": {
+    "latency_p50": 35.8,
+    "latency_p90": 98.2,
+    "latency_p99": 120.3,
+    "error_rate": 0.01,
+    "fault_rate": 0.002,
+    "request_count": 28950,
+    "throughput_per_second": 80.4
+  },
+  "operations": [
+    {
+      "name": "POST /auth/token",
+      "invocation_count": 18230,
+      "latency_p99": 145.2,
+      "error_rate": 0.012
+    },
+    {
+      "name": "GET /auth/validate",
+      "invocation_count": 8450,
+      "latency_p99": 85.5,
+      "error_rate": 0.005
+    },
+    {
+      "name": "POST /auth/refresh",
+      "invocation_count": 2270,
+      "latency_p99": 110.8,
+      "error_rate": 0.008
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "auth-cache.redis.amazonaws.com",
+      "type": "AWS::ElastiCache::Redis",
+      "call_count": 26850,
+      "latency_avg": 12.5,
+      "error_rate": 0.001
+    },
+    {
+      "name": "user-db.rds.amazonaws.com",
+      "type": "AWS::RDS::Database",
+      "call_count": 5420,
+      "latency_avg": 45.3,
+      "error_rate": 0.002
+    }
+  ],
+  "log_groups": [
+    "/aws/eks/production/auth-service"
+  ]
+}

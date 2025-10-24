@@ -1,0 +1,55 @@
+{
+  "query": "FILTER attributes.aws.local.service = 'payment-service' AND attributes.aws.local.operation = 'POST /payments' AND duration > 2000 | STATS count(*) as error_count, avg(duration) as avg_duration by attributes.exception.type | LIMIT 50",
+  "results": [
+    {
+      "exception_type": "DatabaseTimeoutException",
+      "error_count": 342,
+      "avg_duration": 5245.8,
+      "sample_traces": [
+        {
+          "trace_id": "1-abc123-def456",
+          "span_id": "span-789",
+          "timestamp": "2025-10-23T10:15:32Z",
+          "duration": 5180.4,
+          "error_details": {
+            "exception_type": "DatabaseTimeoutException",
+            "message": "Connection timeout after 5000ms waiting for database response",
+            "stack_trace": "at PaymentRepository.savePayment(PaymentRepository.java:45)\nat PaymentService.processPayment(PaymentService.java:123)"
+          },
+          "downstream_calls": [
+            {
+              "name": "payment-db.rds.amazonaws.com",
+              "operation": "INSERT INTO payments",
+              "duration": 5120.2,
+              "status": "TIMEOUT"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "exception_type": "ConnectionPoolExhaustedException",
+      "error_count": 128,
+      "avg_duration": 3840.5,
+      "sample_traces": [
+        {
+          "trace_id": "1-xyz789-abc123",
+          "span_id": "span-456",
+          "timestamp": "2025-10-23T10:22:18Z",
+          "duration": 3920.1,
+          "error_details": {
+            "exception_type": "ConnectionPoolExhaustedException",
+            "message": "Maximum pool size (20) reached, no available connections",
+            "stack_trace": "at DatabaseConnectionPool.getConnection(DatabaseConnectionPool.java:67)\nat PaymentRepository.savePayment(PaymentRepository.java:42)"
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_slow_requests": 470,
+    "primary_failure_mode": "DatabaseTimeoutException (72.8% of errors)",
+    "secondary_failure_mode": "ConnectionPoolExhaustedException (27.2% of errors)",
+    "root_cause_indicator": "Database connection pool exhaustion and slow query performance"
+  }
+}

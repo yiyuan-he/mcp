@@ -1,0 +1,122 @@
+[
+  {
+    "id": "root_cause_payment_latency",
+    "description": "Multi-tool root cause analysis: identify why payment service is slow",
+    "prompt": "The payment-service in production is experiencing high latency. Investigate the root cause and explain what's causing the performance issue. Use whatever tools you need to diagnose the problem.",
+    "expected_tools": ["audit_services", "query_service_metrics", "search_transaction_spans"],
+    "fixtures": {
+      "audit_services": "audit/audit_services_payment_issue",
+      "query_service_metrics": "metrics/query_service_metrics_payment",
+      "search_transaction_spans": "trace/search_transaction_spans_payment"
+    },
+    "expected_answer": "The root cause is database connection pool exhaustion and slow database queries. The payment-db.rds.amazonaws.com dependency is showing 2,100ms average response time, with DatabaseTimeoutException errors occurring in 72.8% of failures. The connection pool is exhausted (max 20 connections reached), causing timeouts.",
+    "grading_method": "llm_judge",
+    "evaluation_criteria": [
+      "Identifies database as the bottleneck",
+      "Mentions connection pool exhaustion or timeout issues",
+      "Provides specific evidence from the data (e.g., latency numbers, error types)"
+    ]
+  },
+  {
+    "id": "slo_breach_investigation",
+    "description": "Multi-tool SLO breach root cause: why is SLO failing and what operation is responsible",
+    "prompt": "The payment-latency-slo is currently breaching. What is the current attainment rate, what's causing the breach, and which operation is the primary contributor?",
+    "expected_tools": ["get_slo", "audit_services"],
+    "fixtures": {
+      "get_slo": "slo/get_slo_payment",
+      "audit_services": "audit/audit_services_payment_issue"
+    },
+    "expected_answer": "The SLO attainment is 84.7% (below the 99% goal). The breach is caused by the POST /payments operation, which is showing 2,800ms P99 latency - far exceeding the 500ms threshold. The underlying issue is database performance degradation.",
+    "grading_method": "llm_judge",
+    "evaluation_criteria": [
+      "States correct attainment rate (84.7% or ~85%)",
+      "Identifies POST /payments as the problematic operation",
+      "Mentions the SLO is breaching or failing to meet goal"
+    ]
+  },
+  {
+    "id": "performance_comparison_services",
+    "description": "Compare two services and explain performance difference",
+    "prompt": "Compare the performance of payment-service and auth-service in production. Why is there such a large difference in their P99 latency?",
+    "expected_tools": ["get_service_detail"],
+    "fixtures": {
+      "get_service_detail": ["service/get_service_detail_payment", "service/get_service_detail_auth"]
+    },
+    "expected_answer": "Payment-service has P99 latency of 2,450ms while auth-service has only 120ms - a 20x difference. The key difference is in their dependencies: payment-service calls payment-db which responds in 2,100ms (slow), while auth-service uses auth-cache (Redis) with only 12.5ms response time. Auth-service's caching strategy makes it much faster.",
+    "grading_method": "llm_judge",
+    "evaluation_criteria": [
+      "Identifies large latency difference (20x or mentions specific numbers)",
+      "Explains dependency difference (database vs cache)",
+      "Connects dependency performance to overall service latency"
+    ]
+  },
+  {
+    "id": "identify_degraded_dependency",
+    "description": "Identify which dependency is causing service degradation",
+    "prompt": "The payment-service has multiple dependencies. Which dependency is degraded and causing performance problems?",
+    "expected_tools": ["audit_services"],
+    "fixtures": {
+      "audit_services": "audit/audit_services_payment_issue"
+    },
+    "expected_answer": "The payment-db.rds.amazonaws.com database dependency is degraded, showing 2,100ms average response time and causing 85% of the service's latency. The auth-service dependency is healthy with only 45.2ms response time.",
+    "grading_method": "llm_judge",
+    "evaluation_criteria": [
+      "Identifies payment-db as the degraded dependency",
+      "Mentions it's in DEGRADED status or has high latency",
+      "Notes auth-service dependency is healthy (contrast)"
+    ]
+  },
+  {
+    "id": "error_trend_analysis",
+    "description": "Analyze error rate trends and correlate with latency",
+    "prompt": "Looking at the payment-service metrics over the past 72 hours, how has the error rate changed and is it correlated with latency?",
+    "expected_tools": ["query_service_metrics"],
+    "fixtures": {
+      "query_service_metrics": "metrics/query_service_metrics_payment"
+    },
+    "expected_answer": "The error rate increased 540% from 0.5% to 3.2%, strongly correlated with the latency spike. Both started increasing on 2025-10-21, with latency growing 445% from 450ms to 2,450ms. The correlation suggests the latency issues are causing timeout errors.",
+    "grading_method": "llm_judge",
+    "evaluation_criteria": [
+      "Mentions error rate increased significantly (5-6x or 540%)",
+      "Notes correlation between error rate and latency",
+      "References the timeline (started Oct 21 or ~72 hours ago)"
+    ]
+  },
+  {
+    "id": "exception_type_analysis",
+    "description": "Identify most common exception type from trace data",
+    "prompt": "What are the most common types of exceptions occurring in the slow payment transactions, and what do they tell us about the problem?",
+    "expected_tools": ["search_transaction_spans"],
+    "fixtures": {
+      "search_transaction_spans": "trace/search_transaction_spans_payment"
+    },
+    "expected_answer": "The most common exception is DatabaseTimeoutException (72.8% of errors, 342 occurrences), followed by ConnectionPoolExhaustedException (27.2%, 128 occurrences). This indicates the database connection pool is exhausted and queries are timing out after 5 seconds, confirming a database capacity/performance issue.",
+    "grading_method": "llm_judge",
+    "evaluation_criteria": [
+      "Identifies DatabaseTimeoutException as most common",
+      "Mentions ConnectionPoolExhaustedException as secondary issue",
+      "Connects to database/connection pool problem"
+    ]
+  },
+  {
+    "id": "multi_tool_comprehensive_diagnosis",
+    "description": "Full multi-tool diagnostic requiring 4+ tool calls",
+    "prompt": "Provide a comprehensive diagnosis of the payment-service issue: What's wrong, what's the severity, what's the root cause, and what specific technical problem needs to be fixed?",
+    "expected_tools": ["audit_services", "get_slo", "query_service_metrics", "search_transaction_spans"],
+    "fixtures": {
+      "audit_services": "audit/audit_services_payment_issue",
+      "get_slo": "slo/get_slo_payment",
+      "query_service_metrics": "metrics/query_service_metrics_payment",
+      "search_transaction_spans": "trace/search_transaction_spans_payment"
+    },
+    "expected_answer": "SEVERITY: Critical - SLO breaching at 84.7% (below 99% goal), 470 slow requests, 68,850 bad requests out of 450,000 total. ROOT CAUSE: Database connection pool exhaustion on payment-db.rds.amazonaws.com. SPECIFIC PROBLEM: Connection pool maxed at 20 connections, causing DatabaseTimeoutException (72.8% of errors) and ConnectionPoolExhaustedException (27.2%). Database queries timing out after 5 seconds, contributing 2,100ms average latency. FIX NEEDED: Increase connection pool size, optimize slow database queries, and potentially add read replicas.",
+    "grading_method": "llm_judge",
+    "evaluation_criteria": [
+      "Identifies critical severity and SLO breach",
+      "Pinpoints database connection pool as root cause",
+      "Mentions specific exceptions (DatabaseTimeout, ConnectionPoolExhausted)",
+      "Provides actionable fix recommendations",
+      "Uses data from multiple tools to support conclusion"
+    ]
+  }
+]

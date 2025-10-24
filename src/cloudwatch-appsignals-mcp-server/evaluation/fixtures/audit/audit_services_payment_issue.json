@@ -1,0 +1,76 @@
+{
+  "audit_summary": {
+    "total_services": 1,
+    "critical_findings": 2,
+    "warning_findings": 1,
+    "info_findings": 0
+  },
+  "service_audits": [
+    {
+      "service_name": "payment-service",
+      "environment": "eks:production",
+      "overall_status": "CRITICAL",
+      "findings": [
+        {
+          "severity": "CRITICAL",
+          "category": "latency",
+          "title": "High P99 Latency Detected",
+          "description": "P99 latency is 2,450ms, exceeding SLO threshold of 500ms by 390%",
+          "impact": "Users experiencing slow payment processing",
+          "recommendation": "Investigate downstream database dependency - 85% of latency attributed to database calls"
+        },
+        {
+          "severity": "CRITICAL",
+          "category": "dependency",
+          "title": "Database Dependency Performance Degradation",
+          "description": "Downstream dependency 'payment-db.rds.amazonaws.com' showing 2,100ms average response time",
+          "impact": "Database is primary bottleneck for payment processing",
+          "recommendation": "Check database connection pool settings, query performance, and index optimization"
+        },
+        {
+          "severity": "WARNING",
+          "category": "error_rate",
+          "title": "Elevated Error Rate on POST /payments",
+          "description": "POST /payments operation showing 3.2% error rate (baseline: 0.5%)",
+          "impact": "Payment failures affecting user experience",
+          "recommendation": "Review recent code deployments and check for timeout-related errors"
+        }
+      ],
+      "metrics": {
+        "latency_p50": 450.2,
+        "latency_p99": 2450.8,
+        "error_rate": 0.032,
+        "request_count": 15420,
+        "fault_count": 494
+      },
+      "top_operations": [
+        {
+          "operation": "POST /payments",
+          "latency_p99": 2800.5,
+          "error_rate": 0.032
+        },
+        {
+          "operation": "GET /payments/{id}",
+          "latency_p99": 180.3,
+          "error_rate": 0.005
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "payment-db.rds.amazonaws.com",
+          "type": "database",
+          "latency_avg": 2100.4,
+          "error_rate": 0.01,
+          "status": "DEGRADED"
+        },
+        {
+          "name": "auth-service",
+          "type": "service",
+          "latency_avg": 45.2,
+          "error_rate": 0.001,
+          "status": "HEALTHY"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "services": [
+    {
+      "service_name": "payment-service",
+      "environment": "eks:production",
+      "attributes": {
+        "platform": "eks",
+        "cluster": "production"
+      },
+      "metrics_summary": {
+        "latency_p99": 250.5,
+        "error_rate": 0.02,
+        "request_count": 15420
+      }
+    },
+    {
+      "service_name": "auth-service",
+      "environment": "eks:production",
+      "attributes": {
+        "platform": "eks",
+        "cluster": "production"
+      },
+      "metrics_summary": {
+        "latency_p99": 120.3,
+        "error_rate": 0.01,
+        "request_count": 28950
+      }
+    },
+    {
+      "service_name": "order-service",
+      "environment": "eks:staging",
+      "attributes": {
+        "platform": "eks",
+        "cluster": "staging"
+      },
+      "metrics_summary": {
+        "latency_p99": 180.7,
+        "error_rate": 0.05,
+        "request_count": 5230
+      }
+    }
+  ],
+  "total_count": 3
+}

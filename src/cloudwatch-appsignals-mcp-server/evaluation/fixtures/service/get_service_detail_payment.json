@@ -1,0 +1,58 @@
+{
+  "service_name": "payment-service",
+  "environment": "eks:production",
+  "platform": "EKS",
+  "attributes": {
+    "cluster": "production",
+    "namespace": "default",
+    "deployment": "payment-service-v2"
+  },
+  "metrics_summary": {
+    "latency_p50": 450.2,
+    "latency_p90": 1850.5,
+    "latency_p99": 2450.8,
+    "error_rate": 0.032,
+    "fault_rate": 0.012,
+    "request_count": 15420,
+    "throughput_per_second": 42.5
+  },
+  "operations": [
+    {
+      "name": "POST /payments",
+      "invocation_count": 8450,
+      "latency_p99": 2800.5,
+      "error_rate": 0.045
+    },
+    {
+      "name": "GET /payments/{id}",
+      "invocation_count": 5230,
+      "latency_p99": 180.3,
+      "error_rate": 0.008
+    },
+    {
+      "name": "PUT /payments/{id}",
+      "invocation_count": 1740,
+      "latency_p99": 320.1,
+      "error_rate": 0.015
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "payment-db.rds.amazonaws.com",
+      "type": "AWS::RDS::Database",
+      "call_count": 12350,
+      "latency_avg": 2100.4,
+      "error_rate": 0.01
+    },
+    {
+      "name": "auth-service",
+      "type": "Service",
+      "call_count": 8450,
+      "latency_avg": 45.2,
+      "error_rate": 0.001
+    }
+  ],
+  "log_groups": [
+    "/aws/eks/production/payment-service"
+  ]
+}

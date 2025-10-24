@@ -1,0 +1,29 @@
+[
+  {
+    "id": "count_production_services",
+    "description": "Test if AI can count services in production environment",
+    "prompt": "How many services are running in the production environment? Use the list_monitored_services tool to find out.",
+    "expected_tools": ["list_monitored_services"],
+    "fixture_name": "service/list_monitored_services",
+    "expected_answer": "2",
+    "grading_method": "exact_match"
+  },
+  {
+    "id": "identify_highest_error_rate",
+    "description": "Test if AI can identify service with highest error rate",
+    "prompt": "Which service has the highest error rate? Use the list_monitored_services tool to check.",
+    "expected_tools": ["list_monitored_services"],
+    "fixture_name": "service/list_monitored_services",
+    "expected_answer": "order-service",
+    "grading_method": "llm_judge"
+  },
+  {
+    "id": "calculate_average_latency",
+    "description": "Test if AI can calculate average P99 latency across all services",
+    "prompt": "What is the average P99 latency across all monitored services? Use the list_monitored_services tool.",
+    "expected_tools": ["list_monitored_services"],
+    "fixture_name": "service/list_monitored_services",
+    "expected_answer": "183.8",
+    "grading_method": "llm_judge"
+  }
+]

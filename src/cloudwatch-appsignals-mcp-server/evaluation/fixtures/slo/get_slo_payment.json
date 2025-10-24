@@ -1,0 +1,38 @@
+{
+  "slo_name": "payment-latency-slo",
+  "slo_arn": "arn:aws:appsignals:us-east-1:123456789012:slo/payment-latency-slo",
+  "description": "Payment service latency must stay under 500ms for 99% of requests",
+  "service": {
+    "name": "payment-service",
+    "environment": "eks:production"
+  },
+  "operations": [
+    "POST /payments",
+    "GET /payments/{id}",
+    "PUT /payments/{id}"
+  ],
+  "goal": {
+    "attainment_goal": 0.99,
+    "interval": "ROLLING_30_DAY"
+  },
+  "sli": {
+    "metric_type": "LATENCY",
+    "comparison_operator": "LessThan",
+    "threshold": 500.0,
+    "statistic": "p99"
+  },
+  "current_state": {
+    "attainment": 0.847,
+    "budget_exhausted": 0.153,
+    "total_requests": 450000,
+    "good_requests": 381150,
+    "bad_requests": 68850,
+    "breach_status": "BREACHING"
+  },
+  "breach_details": {
+    "breach_started": "2025-10-20T14:32:00Z",
+    "duration_hours": 72,
+    "severity": "HIGH",
+    "primary_contributor": "POST /payments operation showing 2,800ms P99 latency"
+  }
+}
