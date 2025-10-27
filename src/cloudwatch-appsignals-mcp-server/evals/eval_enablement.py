@@ -117,7 +117,7 @@ def connect_to_mcp_server(verbose: bool = False):
 
     server_params = StdioServerParameters(
         command="python",
-        args=["--no-cache", "-m", "awslabs.cloudwatch_appsignals_mcp_server.server"],
+        args=["-m", "awslabs.cloudwatch_appsignals_mcp_server.server"],
         env=env
     )
 
