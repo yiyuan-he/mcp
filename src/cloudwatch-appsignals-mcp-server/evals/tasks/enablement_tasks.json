@@ -5,10 +5,8 @@
     "platform": "ec2",
     "language": "python",
     "framework": "flask",
-    "iac_directory": "infrastructure/cdk",
-    "app_directory": "app",
-    "mock_project_path":
-    "/Users/yiyuanh/projects/reinvent-mcp/mcp/src/cloudwatch-appsignals-mcp-server/evals/mock-projects",
+    "iac_directory": "infrastructure/ec2/cdk",
+    "app_directory": "sample-apps/python/flask",
     "expected_tools": ["get_enablement_guide"],
     "validation_rubric": [
       "CloudWatchAgentServerPolicy IAM managed policy is attached to the EC2 instance role in the CDK stack",

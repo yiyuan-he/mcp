@@ -141,6 +141,14 @@ def convert_mcp_tools_to_bedrock(mcp_tools) -> List[Dict[str, Any]]:
 
     return bedrock_tools
 
+def get_mock_project_path() -> Path:
+    """Get the absolute path to the mock-projects directory.
+
+    This is computed relative to the eval script location, making it portable across machines.
+    """
+    script_dir = Path(__file__).parent
+    return script_dir / "mock-projects"
+
 def get_file_tools() -> List[Dict[str, Any]]:
     """Define file operation tools."""
     return [
@@ -259,10 +267,18 @@ async def run_agent_loop(
     """Run the agent loop."""
     metrics_tracker.start_task()
 
+    # Get mock project path (portable across machines)
+    project_root = get_mock_project_path()
+
+    # Construct absolute paths for the MCP tool
+    # Task config has relative paths, but we pass absolute paths to avoid any ambiguity
+    iac_abs_path = project_root / task['iac_directory']
+    app_abs_path = project_root / task['app_directory']
+
     prompt = f"""Enable Application Signals for my {task['language']} {task['framework']} on {task['platform']}.
 
-My infrastructure as code directory is: {task['iac_directory']}
-My application directory is: {task['app_directory']}"""
+My infrastructure as code directory is: {iac_abs_path}
+My application directory is: {app_abs_path}"""
 
     logger.debug(f"Sending prompt to Claude...")
 
@@ -278,7 +294,6 @@ My application directory is: {task['app_directory']}"""
         "content": [{"text": prompt}]
     }]
 
-    project_root = Path(task["mock_project_path"])
     max_turns = 20
     turn = 0
 
@@ -477,7 +492,7 @@ def cleanup_git_state(task):
     Only cleans the directories specified in the task (iac_directory, app_directory)
     to avoid clearing unrelated changes in the repo.
     """
-    project_root = Path(task["mock_project_path"])
+    project_root = get_mock_project_path()
 
     paths_to_clean = []
 
@@ -593,7 +608,7 @@ async def main():
                     expected_tools = task.get("expected_tools", ["get_enablement_guide"])
                     metrics = metrics_tracker.get_metrics(expected_tools=expected_tools)
 
-                    project_root = Path(task["mock_project_path"])
+                    project_root = get_mock_project_path()
                     validation = await validate_with_llm(bedrock_client, task, project_root)
 
                     logger.info("\n" + "="*60)
