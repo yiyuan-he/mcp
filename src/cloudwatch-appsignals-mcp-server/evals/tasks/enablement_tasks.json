@@ -1,0 +1,21 @@
+[
+  {
+    "id": "ec2_python_flask",
+    "description": "Enable Application Signals for Python Flask application on EC2",
+    "platform": "ec2",
+    "language": "python",
+    "framework": "flask",
+    "iac_directory": "infrastructure/cdk",
+    "app_directory": "app",
+    "mock_project_path":
+    "/Users/yiyuanh/projects/reinvent-mcp/mcp/src/cloudwatch-appsignals-mcp-server/evals/mock-projects/ec2-python-flask",
+    "expected_tools": ["get_enablement_guide"],
+    "validation_rubric": [
+      "CloudWatchAgentServerPolicy IAM managed policy is attached to the EC2 instance role in the CDK stack",
+      "aws-opentelemetry-distro package is added to requirements.txt or pyproject.toml",
+      "If a Dockerfile exists, it includes installation of aws-opentelemetry-distro",
+      "Modified files have no syntax errors (valid Python, TypeScript, JSON, etc.)",
+      "Existing application code is preserved without breaking changes"
+    ]
+  }
+]
