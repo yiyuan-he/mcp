@@ -155,12 +155,12 @@ def convert_mcp_tools_to_bedrock(mcp_tools) -> List[Dict[str, Any]]:
 
 
 def get_mock_project_path() -> Path:
-    """Get the absolute path to the mock-projects directory.
+    """Get the absolute path to the appsignals-enablement-mock-projects directory.
 
     This is computed relative to the eval script location, making it portable across machines.
     """
     script_dir = Path(__file__).parent
-    return script_dir / 'mock-projects'
+    return script_dir / '..' / '..' / '..' / 'samples' / 'appsignals-enablement-mock-projects'
 
 
 def get_file_tools() -> List[Dict[str, Any]]:
