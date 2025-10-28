@@ -557,9 +557,6 @@ async def main():
     )
     parser.add_argument('--task', help='Run specific task by ID (default: run all)')
     parser.add_argument(
-        '--tasks-file', default='tasks/enablement_tasks.json', help='Path to tasks file'
-    )
-    parser.add_argument(
         '--no-cleanup',
         action='store_true',
         help='Skip git cleanup after evaluation (useful for inspecting changes)',
@@ -582,7 +579,7 @@ async def main():
         logger.error('Make sure AWS credentials are configured')
         sys.exit(1)
 
-    tasks_file = Path(__file__).parent / args.tasks_file
+    tasks_file = Path(__file__).parent / 'tasks' / 'enablement_tasks.json'
     with open(tasks_file) as f:
         all_tasks = json.load(f)
 
