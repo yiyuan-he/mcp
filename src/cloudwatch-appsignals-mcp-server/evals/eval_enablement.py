@@ -379,7 +379,30 @@ async def validate_with_llm(
     # Try to build the IaC to verify it compiles
     build_result = None
     iac_path = project_root / task['iac_directory']
-    if (iac_path / 'package.json').exists():
+
+    # Handle _package.json rename (used to avoid CI detection)
+    package_json_path = iac_path / 'package.json'
+    underscore_package_path = iac_path / '_package.json'
+    renamed_package = False
+
+    if underscore_package_path.exists() and not package_json_path.exists():
+        logger.info('Renaming _package.json to package.json for build...')
+        underscore_package_path.rename(package_json_path)
+        renamed_package = True
+
+    if package_json_path.exists():
+        # Install dependencies if node_modules doesn't exist
+        if not (iac_path / 'node_modules').exists():
+            logger.info('Installing npm dependencies...')
+            try:
+                install_cmd = subprocess.run(
+                    ['npm', 'install'], cwd=iac_path, capture_output=True, text=True, timeout=120
+                )
+                if install_cmd.returncode != 0:
+                    logger.error(f'npm install failed: {install_cmd.stderr}')
+            except Exception as e:
+                logger.error(f'Failed to install dependencies: {e}')
+
         logger.info('Running npm run build to validate IaC changes...')
         try:
             build_cmd = subprocess.run(
@@ -398,6 +421,11 @@ async def validate_with_llm(
         except Exception as e:
             logger.error(f'Build validation error: {e}')
             build_result = {'exit_code': -1, 'stdout': '', 'stderr': str(e), 'success': False}
+        finally:
+            # Rename back to _package.json if we renamed it earlier
+            if renamed_package and package_json_path.exists():
+                logger.info('Renaming package.json back to _package.json...')
+                package_json_path.rename(underscore_package_path)
 
     try:
         result = subprocess.run(
