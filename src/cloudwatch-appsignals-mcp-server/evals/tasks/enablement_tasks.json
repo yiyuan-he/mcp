@@ -8,6 +8,12 @@
     "iac_directory": "infrastructure/ec2/cdk",
     "app_directory": "sample-apps/python/flask",
     "expected_tools": ["get_enablement_guide"],
+    "modifies_code": true,
+    "build_config": {
+      "command": "npm run build",
+      "working_dir": "infrastructure/ec2/cdk",
+      "install_command": "npm install"
+    },
     "validation_rubric": [
       "IAM: CloudWatchAgentServerPolicy is attached to EC2 instance role",
       "Prerequisites: System dependencies installed (wget, docker, python3-pip)",
