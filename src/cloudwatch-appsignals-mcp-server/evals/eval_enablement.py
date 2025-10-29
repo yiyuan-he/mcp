@@ -16,9 +16,11 @@ Usage:
 import argparse
 import asyncio
 import boto3
+import io
 import json
 import subprocess
 import sys
+import time
 import traceback
 from loguru import logger
 from pathlib import Path
@@ -237,19 +239,35 @@ async def main():
     logger.debug('Connecting to MCP server...')
 
     # Connect to MCP server using framework
-    async with connect_to_mcp_server(verbose=args.verbose) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
+    read_stream, write_stream = None, None
+    session = None
 
-            tools_response = await session.list_tools()
-            logger.debug(f'Connected to MCP server with {len(tools_response.tools)} tools')
+    try:
+        async with connect_to_mcp_server(verbose=args.verbose) as (read, write):
+            read_stream, write_stream = read, write
+            async with ClientSession(read, write) as session:
+                await session.initialize()
 
-            # Run each task
-            for task in all_tasks:
-                await run_enablement_task(bedrock_client, session, task, tools_response.tools, args)
+                tools_response = await session.list_tools()
+                logger.debug(f'Connected to MCP server with {len(tools_response.tools)} tools')
 
-            await asyncio.sleep(1)
+                # Run each task
+                for task in all_tasks:
+                    await run_enablement_task(bedrock_client, session, task, tools_response.tools, args)
+    finally:
+        # Give subprocess time to clean up properly
+        await asyncio.sleep(0.1)
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info('\nInterrupted by user')
+        sys.exit(0)
+    finally:
+        # Suppress subprocess cleanup errors that occur after event loop closes
+        # These are harmless - the subprocess is already terminated
+        sys.stderr = io.StringIO()
+        time.sleep(0.1)  # Give subprocess time to clean up
+        sys.stderr = sys.__stderr__
