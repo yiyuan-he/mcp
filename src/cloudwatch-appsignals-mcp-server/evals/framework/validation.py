@@ -10,6 +10,8 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
+from .constants import DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE
+
 
 async def run_build_validation(
     command: str,
@@ -142,9 +144,9 @@ Be strict but fair. Only mark as PASS if the criterion is clearly met."""
         start = time.time()
 
         response = bedrock_client.converse(
-            modelId='us.anthropic.claude-sonnet-4-20250514-v1:0',
+            modelId=DEFAULT_MODEL_ID,
             messages=[{'role': 'user', 'content': [{'text': prompt}]}],
-            inferenceConfig={'temperature': 0.0},
+            inferenceConfig={'temperature': DEFAULT_TEMPERATURE},
         )
 
         elapsed = time.time() - start

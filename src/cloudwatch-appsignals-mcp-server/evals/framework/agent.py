@@ -10,6 +10,7 @@ from typing import Any, Dict, List
 from loguru import logger
 from mcp import ClientSession
 
+from .constants import DEFAULT_MAX_TURNS, DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE
 from .file_tools import get_file_tools
 from .mcp_client import convert_mcp_tools_to_bedrock
 from .metrics import MetricsTracker
@@ -75,7 +76,7 @@ async def run_agent_loop(
     project_root: Path,
     mcp_tools,
     metrics_tracker: MetricsTracker,
-    max_turns: int = 20,
+    max_turns: int = DEFAULT_MAX_TURNS,
 ) -> List[Dict[str, Any]]:
     """Run the agent loop for task completion.
 
@@ -114,10 +115,10 @@ async def run_agent_loop(
 
         try:
             response = bedrock_client.converse(
-                modelId='us.anthropic.claude-sonnet-4-20250514-v1:0',
+                modelId=DEFAULT_MODEL_ID,
                 messages=messages,
                 toolConfig=toolConfig,
-                inferenceConfig={'temperature': 0.0},
+                inferenceConfig={'temperature': DEFAULT_TEMPERATURE},
             )
 
             elapsed = time.time() - start

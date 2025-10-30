@@ -33,6 +33,7 @@ from framework import (
     run_build_validation,
     validate_with_llm,
 )
+from framework.constants import DEFAULT_AWS_REGION
 from mcp import ClientSession
 
 
@@ -213,7 +214,9 @@ async def main():
 
     # Initialize Bedrock client
     try:
-        bedrock_client = boto3.client(service_name='bedrock-runtime', region_name='us-east-1')
+        bedrock_client = boto3.client(
+            service_name='bedrock-runtime', region_name=DEFAULT_AWS_REGION
+        )
         logger.debug('Bedrock client initialized')
     except Exception as e:
         logger.error(f'Failed to initialize Bedrock client: {e}')
