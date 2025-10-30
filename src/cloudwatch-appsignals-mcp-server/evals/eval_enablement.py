@@ -75,12 +75,12 @@ def cleanup_enablement_changes(project_root: Path, task: Dict[str, Any]):
 
 
 def get_mock_project_path() -> Path:
-    """Get the absolute path to the appsignals-enablement-mock-projects directory.
+    """Get the absolute path to the get-enablement-guide-samples directory.
 
     This is computed relative to the eval script location, making it portable across machines.
     """
     script_dir = Path(__file__).parent
-    return script_dir / '..' / '..' / '..' / 'samples' / 'appsignals-enablement-mock-projects'
+    return script_dir / '..' / '..' / '..' / 'samples' / 'cloudwatch-appsignals-mcp-server' / 'get-enablement-guide-samples'
 
 
 async def run_enablement_task(
