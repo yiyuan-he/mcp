@@ -16,11 +16,9 @@ Usage:
 import argparse
 import asyncio
 import boto3
-import io
 import json
 import subprocess
 import sys
-import time
 import traceback
 from loguru import logger
 from pathlib import Path
@@ -245,12 +243,8 @@ async def main():
     logger.debug('Connecting to MCP server...')
 
     # Connect to MCP server using framework
-    read_stream, write_stream = None, None
-    session = None
-
     try:
         async with connect_to_mcp_server(verbose=args.verbose) as (read, write):
-            read_stream, write_stream = read, write
             async with ClientSession(read, write) as session:
                 await session.initialize()
 
@@ -271,9 +265,3 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         logger.info('\nInterrupted by user')
         sys.exit(0)
-    finally:
-        # Suppress subprocess cleanup errors that occur after event loop closes
-        # These are harmless - the subprocess is already terminated
-        sys.stderr = io.StringIO()
-        time.sleep(0.1)  # Give subprocess time to clean up
-        sys.stderr = sys.__stderr__
