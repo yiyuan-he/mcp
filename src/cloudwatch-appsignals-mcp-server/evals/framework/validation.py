@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from .constants import DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE
+from .constants import DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE, LLM_JUDGE_VALIDATION_PROMPT
 
 
 async def run_build_validation(
@@ -120,25 +120,12 @@ async def validate_with_llm(
             stderr_preview = build_result['stderr'][:500]
             build_info = f'\n**Build Validation:**\n✗ Build FAILED (exit code {build_result["exit_code"]})\n\nBuild errors:\n{stderr_preview}\n'
 
-    prompt = f"""You are evaluating code changes for a software modification task.
-
-**Validation Rubric:**
-{rubric_items}
-{build_info}
-**Git Diff of Changes:**
-```diff
-{git_diff}
-```
-
-Instructions:
-For each criterion in the rubric, evaluate whether it is satisfied by the changes and build result.
-
-Respond in this EXACT format:
-1. [PASS/FAIL] Brief reasoning (1 sentence)
-2. [PASS/FAIL] Brief reasoning (1 sentence)
-... (continue for all {len(validation_rubric)} criteria)
-
-Be strict but fair. Only mark as PASS if the criterion is clearly met."""
+    prompt = LLM_JUDGE_VALIDATION_PROMPT.format(
+        rubric_items=rubric_items,
+        build_info=build_info,
+        git_diff=git_diff,
+        num_criteria=len(validation_rubric),
+    )
 
     try:
         start = time.time()

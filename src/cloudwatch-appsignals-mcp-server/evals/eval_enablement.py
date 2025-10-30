@@ -33,7 +33,7 @@ from framework import (
     run_build_validation,
     validate_with_llm,
 )
-from framework.constants import DEFAULT_AWS_REGION
+from framework.constants import DEFAULT_AWS_REGION, ENABLEMENT_TASK_PROMPT
 from mcp import ClientSession
 
 
@@ -109,10 +109,13 @@ async def run_enablement_task(
     iac_abs_path = project_root / task['iac_directory']
     app_abs_path = project_root / task['app_directory']
 
-    prompt = f"""Enable Application Signals for my {task['language']} {task['framework']} on {task['platform']}.
-
-My infrastructure as code directory is: {iac_abs_path}
-My application directory is: {app_abs_path}"""
+    prompt = ENABLEMENT_TASK_PROMPT.format(
+        language=task['language'],
+        framework=task['framework'],
+        platform=task['platform'],
+        iac_path=iac_abs_path,
+        app_path=app_abs_path,
+    )
 
     # Initialize metrics tracker
     metrics_tracker = MetricsTracker()
