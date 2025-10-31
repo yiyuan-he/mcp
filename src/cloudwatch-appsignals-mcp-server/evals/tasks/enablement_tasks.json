@@ -2,18 +2,24 @@
   {
     "id": "ec2_python_flask",
     "description": "Enable Application Signals for Python Flask application on EC2",
-    "platform": "ec2",
+    "git_paths": [
+      "samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk",
+      "samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/sample-apps/python/flask"
+    ],
+    "iac_dir": "samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk",
+    "app_dir": "samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/sample-apps/python/flask",
     "language": "python",
     "framework": "flask",
-    "iac_directory": "infrastructure/ec2/cdk",
-    "app_directory": "sample-apps/python/flask",
-    "expected_tools": ["get_enablement_guide"],
-    "modifies_code": true,
+    "platform": "ec2",
     "build_config": {
       "command": "npm run build",
-      "working_dir": "infrastructure/ec2/cdk",
-      "install_command": "npm install"
+      "install_command": "npm install",
+      "working_dir": "samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk"
     },
+    "expected_tools": [
+      "get_enablement_guide"
+    ],
+    "modifies_code": true,
     "validation_rubric": [
       "IAM: CloudWatchAgentServerPolicy is attached to EC2 instance role",
       "Prerequisites: System dependencies installed (wget, docker, python3-pip)",
@@ -27,7 +33,6 @@
       "OTel Config: Endpoints (OTEL_TRACES_SAMPLER_ARG with localhost:2000, OTEL_AWS_APPLICATION_SIGNALS_EXPORTER_ENDPOINT with localhost:4316/v1/metrics, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT with localhost:4316/v1/traces)",
       "OTel Config: Service name resource attribute set",
       "Application Startup: If Docker, uses docker run with -e flags and --network host. If non-Docker, uses opentelemetry-instrument wrapper with export env vars.",
-      "Build: IaC compiles successfully (npm run build passes)",
       "Code Integrity: Only IaC/Dockerfile modified, application code unchanged"
     ]
   }

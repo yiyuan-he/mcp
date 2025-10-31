@@ -11,24 +11,51 @@ DEFAULT_AWS_REGION = 'us-east-1'
 DEFAULT_MAX_TURNS = 20
 DEFAULT_TEMPERATURE = 0.0
 
-# Prompt templates
-ENABLEMENT_TASK_PROMPT = """Enable Application Signals for my {language} {framework} on {platform}.
+# Specialized validation prompts for different eval types
 
-My infrastructure as code directory is: {iac_path}
-My application directory is: {app_path}"""
-
-LLM_JUDGE_VALIDATION_PROMPT = """You are evaluating code changes for a software modification task.
+CODE_MODIFICATION_VALIDATION_PROMPT = """You are evaluating code changes for a software modification task.
 
 **Validation Rubric:**
 {rubric_items}
-{build_info}
-**Git Diff of Changes:**
-```diff
-{git_diff}
-```
+
+{captured_data}
 
 Instructions:
-For each criterion in the rubric, evaluate whether it is satisfied by the changes and build result.
+For each criterion in the rubric, evaluate whether it is satisfied by the changes and captured data.
+
+Respond in this EXACT format:
+1. [PASS/FAIL] Brief reasoning (1 sentence)
+2. [PASS/FAIL] Brief reasoning (1 sentence)
+... (continue for all {num_criteria} criteria)
+
+Be strict but fair. Only mark as PASS if the criterion is clearly met."""
+
+DATA_INTERPRETATION_VALIDATION_PROMPT = """You are evaluating an agent's data interpretation and analysis task.
+
+**Validation Rubric:**
+{rubric_items}
+
+{captured_data}
+
+Instructions:
+For each criterion in the rubric, evaluate whether the agent's response correctly addresses it.
+
+Respond in this EXACT format:
+1. [PASS/FAIL] Brief reasoning (1 sentence)
+2. [PASS/FAIL] Brief reasoning (1 sentence)
+... (continue for all {num_criteria} criteria)
+
+Be strict but fair. Only mark as PASS if the agent's answer is accurate and complete."""
+
+WORKFLOW_VALIDATION_PROMPT = """You are evaluating whether an agent followed the correct workflow and tool usage.
+
+**Validation Rubric:**
+{rubric_items}
+
+{captured_data}
+
+Instructions:
+For each criterion in the rubric, evaluate whether the agent's tool usage and workflow meets it.
 
 Respond in this EXACT format:
 1. [PASS/FAIL] Brief reasoning (1 sentence)

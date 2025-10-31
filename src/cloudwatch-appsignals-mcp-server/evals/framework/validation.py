@@ -1,3 +1,17 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Validation utilities for MCP tool evaluation.
 
 Provides LLM-as-judge validation and build verification.
@@ -5,12 +19,10 @@ Provides LLM-as-judge validation and build verification.
 
 import subprocess
 import time
+from .constants import DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE, CODE_MODIFICATION_VALIDATION_PROMPT
+from loguru import logger
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
-from loguru import logger
-
-from .constants import DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE, LLM_JUDGE_VALIDATION_PROMPT
 
 
 async def run_build_validation(
@@ -109,21 +121,32 @@ async def validate_with_llm(
             'git_diff': '',
         }
 
-    rubric_items = '\n'.join([f'{i + 1}. {criterion}' for i, criterion in enumerate(validation_rubric)])
+    rubric_items = '\n'.join(
+        [f'{i + 1}. {criterion}' for i, criterion in enumerate(validation_rubric)]
+    )
 
-    # Format build result if provided
-    build_info = ''
+    # Format captured data
+    captured_data_parts = []
+
+    # Add git diff
+    if git_diff:
+        captured_data_parts.append(f"**Git Diff:**\n```diff\n{git_diff}\n```")
+
+    # Add build result if provided
     if build_result:
         if build_result['success']:
-            build_info = '\n**Build Validation:**\n✓ Build succeeded (exit code 0)\n'
+            captured_data_parts.append('**Build Validation:**\n✓ Build succeeded (exit code 0)')
         else:
             stderr_preview = build_result['stderr'][:500]
-            build_info = f'\n**Build Validation:**\n✗ Build FAILED (exit code {build_result["exit_code"]})\n\nBuild errors:\n{stderr_preview}\n'
+            captured_data_parts.append(
+                f'**Build Validation:**\n✗ Build FAILED (exit code {build_result["exit_code"]})\n\nBuild errors:\n{stderr_preview}'
+            )
 
-    prompt = LLM_JUDGE_VALIDATION_PROMPT.format(
+    captured_data_str = '\n\n'.join(captured_data_parts)
+
+    prompt = CODE_MODIFICATION_VALIDATION_PROMPT.format(
         rubric_items=rubric_items,
-        build_info=build_info,
-        git_diff=git_diff,
+        captured_data=captured_data_str,
         num_criteria=len(validation_rubric),
     )
 

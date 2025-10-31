@@ -1,34 +1,132 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """MCP client utilities.
 
 Provides connection and tool conversion utilities for MCP servers.
 """
 
+import json
 import os
-from typing import Any, Dict, List
-
+import tempfile
 from mcp import StdioServerParameters
 from mcp.client.stdio import stdio_client
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 def connect_to_mcp_server(
-    server_module: str = 'awslabs.cloudwatch_appsignals_mcp_server.server',
+    server_path: str,
     verbose: bool = False,
+    mock_config: Optional[Dict[str, Any]] = None,
 ):
     """Connect to an MCP server via stdio.
 
+    Connects to a local MCP server file, optionally applying mocks
+    to external dependencies (boto3, etc.) in the server subprocess.
+
     Args:
-        server_module: Python module path to MCP server (e.g., 'package.module.server')
+        server_path: Path to MCP server.py file (e.g., '../../src/server.py')
         verbose: Enable verbose logging from server
+        mock_config: Optional mock configuration dictionary
+
+    Returns:
+        Context manager from stdio_client for MCP connection
+
+    Example:
+        # Without mocks
+        async with connect_to_mcp_server('../../src/server.py') as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+
+        # With mocks
+        mocks = {
+            'boto3': {
+                'cloudwatch': {
+                    'GetMetricData': {'MetricDataResults': [...]}
+                }
+            }
+        }
+        async with connect_to_mcp_server('../../src/server.py', mock_config=mocks) as (read, write):
+            ...
     """
+    if not server_path:
+        raise ValueError('server_path is required')
+
+    # Resolve server path to absolute
+    server_file = Path(server_path).resolve()
+    if not server_file.exists():
+        raise FileNotFoundError(f'MCP server not found: {server_path}')
+
+    # Determine module path and working directory
+    # For server.py with relative imports, we need to run as module
+    # E.g., /path/to/awslabs/cloudwatch_appsignals_mcp_server/server.py
+    #       -> module: awslabs.cloudwatch_appsignals_mcp_server.server
+    #       -> cwd: /path/to (parent of awslabs)
+
+    # Find the parent directory containing the package
+    server_dir = server_file.parent
+    package_name = server_dir.name  # e.g., cloudwatch_appsignals_mcp_server
+    namespace_dir = server_dir.parent  # e.g., awslabs
+    namespace_name = namespace_dir.name  # e.g., awslabs
+    working_dir = namespace_dir.parent  # e.g., /path/to
+
+    # Construct module path
+    module_path = f'{namespace_name}.{package_name}.server'
+
     env = os.environ.copy()
     if not verbose:
         env['LOGURU_LEVEL'] = 'ERROR'
 
-    server_params = StdioServerParameters(
-        command='python', args=['-m', server_module], env=env
-    )
+    # If mocks provided, write to temp file and use wrapper
+    if mock_config:
+        # Create temp file for mock config
+        mock_fd, mock_file_path = tempfile.mkstemp(suffix='.json', prefix='mcp_mocks_')
+        try:
+            with os.fdopen(mock_fd, 'w') as f:
+                json.dump(mock_config, f)
 
-    return stdio_client(server_params)
+            # Set environment variable for wrapper to find mocks
+            env['MCP_EVAL_MOCK_FILE'] = mock_file_path
+
+            # Get path to mock_server_wrapper.py
+            wrapper_path = Path(__file__).parent / 'mock_server_wrapper.py'
+
+            # Use wrapper to start server with mocks
+            server_params = StdioServerParameters(
+                command='python',
+                args=[str(wrapper_path), str(server_file)],
+                env=env,
+                cwd=str(working_dir),
+            )
+
+            return stdio_client(server_params)
+        finally:
+            # Clean up temp file after stdio_client returns
+            try:
+                os.unlink(mock_file_path)
+            except Exception:
+                pass
+    else:
+        # Direct connection without mocks - run as module
+        server_params = StdioServerParameters(
+            command='python',
+            args=['-m', module_path],
+            env=env,
+            cwd=str(working_dir),
+        )
+        return stdio_client(server_params)
 
 
 def convert_mcp_tools_to_bedrock(mcp_tools) -> List[Dict[str, Any]]:
