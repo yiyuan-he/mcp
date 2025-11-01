@@ -12,93 +12,81 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Enablement Tool Evaluation Script.
+"""Generic evaluation script for MCP tools.
 
-Evaluates whether AI assistant can:
-1. Call the get_enablement_guide MCP tool
-2. Understand the returned instructions
-3. Modify project files correctly
-4. Pass validation criteria
+Auto-discovers and runs all tasks defined in tasks/ directory.
 
 Usage:
-    python evals/eval_enablement.py
-    python evals/eval_enablement.py -v
-    python evals/eval_enablement.py --task ec2_python_flask
-    python evals/eval_enablement.py --no-cleanup
+    python evals/eval.py
+    python evals/eval.py -v
+    python evals/eval.py --task ec2_python_flask
+    python evals/eval.py --no-cleanup
 """
 
 import argparse
 import asyncio
 import boto3
-import json
-import subprocess
+import importlib
 import sys
 import traceback
 from framework import EvalRunner
 from framework.constants import DEFAULT_AWS_REGION
 from loguru import logger
 from pathlib import Path
-from tasks.enablement import EnablementTask
-from typing import Any, Dict
-
+from typing import Any, Dict, List
 
 logger.remove()
 
 
-def cleanup_enablement_changes(mcp_repo_root: Path, task: EnablementTask):
-    """Clean up git changes made by enablement agent.
+def discover_tasks() -> tuple[List[Any], Path]:
+    """Auto-discover all tasks from *_tasks.py files in evals/ directory.
 
-    Enablement-specific cleanup that resets paths specified in task.
-
-    Args:
-        mcp_repo_root: Absolute path to MCP repository root
-        task: EnablementTask with git_paths (relative to mcp_repo_root)
+    Returns:
+        Tuple of (all_tasks, server_path)
     """
-    if not task.git_paths:
-        logger.warning('No git_paths specified to clean')
-        return
+    evals_dir = Path(__file__).parent
+    all_tasks = []
+    server_path = None
 
-    try:
-        for rel_path in task.git_paths:
-            full_path = str(mcp_repo_root / rel_path)
-            logger.debug(f'Cleaning path: {full_path}')
-            subprocess.run(
-                ['git', 'checkout', 'HEAD', '--', full_path],
-                capture_output=True,
-                timeout=10,
-            )
-            subprocess.run(
-                ['git', 'clean', '-fd', full_path],
-                capture_output=True,
-                timeout=10,
-            )
-        logger.debug(f'Reset git state for: {", ".join(task.git_paths)}')
-    except Exception as e:
-        logger.warning(f'Failed to reset git state: {e}')
+    # Find all *_tasks.py files in evals/ directory
+    task_modules = [
+        f.stem for f in evals_dir.glob('*_tasks.py')
+    ]
 
+    logger.debug(f'Discovered task modules: {task_modules}')
 
-def get_mock_project_path() -> Path:
-    """Get the absolute path to the get-enablement-guide-samples directory.
+    for module_name in task_modules:
+        try:
+            # Import the module
+            module = importlib.import_module(module_name)
 
-    This is computed relative to the eval script location, making it portable across machines.
-    """
-    script_dir = Path(__file__).parent
-    return (
-        script_dir
-        / '..'
-        / '..'
-        / '..'
-        / 'samples'
-        / 'cloudwatch-appsignals-mcp-server'
-        / 'get-enablement-guide-samples'
-    )
+            # Get TASKS list if it exists
+            if hasattr(module, 'TASKS'):
+                tasks = module.TASKS
+                all_tasks.extend(tasks)
+                logger.debug(f'Loaded {len(tasks)} tasks from {module_name}')
+
+            # Get server path if defined (first one wins)
+            if server_path is None and hasattr(module, 'SERVER_PATH'):
+                server_path = module.SERVER_PATH
+                logger.debug(f'Using server path from {module_name}: {server_path}')
+
+        except Exception as e:
+            logger.warning(f'Failed to load tasks from {module_name}: {e}')
+
+    # Default server path if not specified
+    if server_path is None:
+        server_path = Path(__file__).parent.parent / 'awslabs' / 'cloudwatch_appsignals_mcp_server' / 'server.py'
+        logger.debug(f'Using default server path: {server_path}')
+
+    return all_tasks, server_path
 
 
-def report_task_results(task: EnablementTask, result: Dict[str, Any]) -> None:
+def report_task_results(task: Any, result: Dict[str, Any]) -> None:
     """Report results for a single task.
 
     Args:
-        task: EnablementTask instance
+        task: Task instance
         result: Result dictionary from EvalRunner
     """
     logger.info('\n' + '=' * 60)
@@ -111,7 +99,7 @@ def report_task_results(task: EnablementTask, result: Dict[str, Any]) -> None:
         logger.info('=' * 60 + '\n')
         return
 
-    # Report results for each prompt (usually just one for enablement)
+    # Report results for each prompt
     for prompt_result in result['prompt_results']:
         prompt_idx = prompt_result['prompt_index']
         metrics = prompt_result['metrics']
@@ -143,7 +131,7 @@ def report_task_results(task: EnablementTask, result: Dict[str, Any]) -> None:
 
 async def main():
     """Entry point for eval script."""
-    parser = argparse.ArgumentParser(description='Evaluate Application Signals enablement tool')
+    parser = argparse.ArgumentParser(description='Evaluate MCP tools')
     parser.add_argument(
         '--verbose', '-v', action='store_true', help='Enable verbose/debug logging'
     )
@@ -151,7 +139,7 @@ async def main():
     parser.add_argument(
         '--no-cleanup',
         action='store_true',
-        help='Skip git cleanup after evaluation (useful for inspecting changes)',
+        help='Skip cleanup after evaluation (useful for inspecting changes)',
     )
 
     args = parser.parse_args()
@@ -161,7 +149,29 @@ async def main():
     else:
         logger.add(sys.stderr, level='INFO', format='<level>{message}</level>')
 
-    logger.info('Starting Application Signals enablement evaluation\n')
+    logger.info('Starting MCP tool evaluation\n')
+
+    # Auto-discover tasks
+    all_tasks, server_path = discover_tasks()
+
+    if not all_tasks:
+        logger.error('No tasks found in tasks/ directory')
+        sys.exit(1)
+
+    # Filter by task ID if specified
+    if args.task:
+        tasks = [t for t in all_tasks if t.id == args.task]
+        if not tasks:
+            logger.error(f"Task '{args.task}' not found")
+            logger.info(f"Available tasks: {', '.join(t.id for t in all_tasks)}")
+            sys.exit(1)
+    else:
+        tasks = all_tasks
+
+    logger.info(f'Loaded {len(tasks)} task(s)')
+    for task in tasks:
+        logger.info(f'  - {task.id}')
+    logger.info('')
 
     # Initialize Bedrock client
     try:
@@ -174,31 +184,6 @@ async def main():
         logger.error('Make sure AWS credentials are configured')
         sys.exit(1)
 
-    # Load tasks from JSON
-    tasks_file = Path(__file__).parent / 'tasks' / 'enablement_tasks.json'
-    with open(tasks_file) as f:
-        task_dicts = json.load(f)
-
-    # Filter by task ID if specified
-    if args.task:
-        task_dicts = [t for t in task_dicts if t['id'] == args.task]
-        if not task_dicts:
-            logger.error(f"Task '{args.task}' not found")
-            sys.exit(1)
-
-    # Convert to EnablementTask instances
-    tasks = [EnablementTask.from_dict(t) for t in task_dicts]
-
-    logger.info(f'Loaded {len(tasks)} task(s)')
-    for task in tasks:
-        logger.info(f'  - {task.id}: {task.platform} + {task.language}')
-    logger.info('')
-
-    # Get server path (relative to evals/eval_enablement.py)
-    # evals/eval_enablement.py -> evals/ -> cloudwatch-appsignals-mcp-server/ -> awslabs/...
-    server_path = Path(__file__).parent.parent / 'awslabs' / 'cloudwatch_appsignals_mcp_server' / 'server.py'
-    logger.debug(f'MCP server path: {server_path}')
-
     # Get MCP repository root (where samples/ directory is)
     mcp_repo_root = Path(__file__).parent.parent.parent.parent
     if not (mcp_repo_root / 'samples').exists():
@@ -206,12 +191,13 @@ async def main():
         sys.exit(1)
 
     logger.debug(f'MCP repository root: {mcp_repo_root}')
+    logger.debug(f'MCP server path: {server_path}')
 
     # Create runner and execute tasks
     try:
         runner = EvalRunner(tasks=tasks, server_path=str(server_path))
 
-        # Execute each task with mcp_repo_root
+        # Execute each task
         results = []
         for task in tasks:
             result = await runner.run_task(
@@ -223,12 +209,11 @@ async def main():
         for task, result in zip(tasks, results):
             report_task_results(task, result)
 
-            # Clean up git changes if task modifies code
-            if task.modifies_code:
-                if not args.no_cleanup:
-                    cleanup_enablement_changes(mcp_repo_root, task)
-                else:
-                    logger.info(f'Skipping git cleanup for {task.id} (--no-cleanup flag set)')
+            # Call task-specific cleanup if it exists
+            if hasattr(task, 'cleanup') and not args.no_cleanup:
+                task.cleanup(mcp_repo_root)
+            elif not args.no_cleanup and hasattr(task, 'modifies_code') and task.modifies_code:
+                logger.debug(f'Skipping cleanup for {task.id} (no cleanup method defined)')
 
     except Exception as e:
         logger.error(f'Evaluation failed: {e}')

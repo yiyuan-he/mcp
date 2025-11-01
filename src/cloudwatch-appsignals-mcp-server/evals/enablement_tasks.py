@@ -18,6 +18,8 @@ Evaluates whether the AI agent can use the get_enablement_guide tool
 to enable Application Signals monitoring on various platforms.
 """
 
+import subprocess
+from loguru import logger
 from pathlib import Path
 from typing import Optional
 
@@ -27,6 +29,10 @@ from framework import (
     LLMJudgeValidator,
     BuildValidator,
 )
+
+
+# Server path for this tool
+SERVER_PATH = Path(__file__).parent.parent / 'awslabs' / 'cloudwatch_appsignals_mcp_server' / 'server.py'
 
 
 class EnablementTask(Task):
@@ -52,7 +58,6 @@ class EnablementTask(Task):
         expected_tools: list[str] = None,
         build_command: Optional[str] = None,
         build_working_dir: Optional[str] = None,
-        install_command: Optional[str] = None,
         modifies_code: bool = True,
         max_turns: int = 20,
     ):
@@ -68,9 +73,8 @@ class EnablementTask(Task):
             platform: Platform (e.g., 'ec2', 'ecs', 'eks')
             validation_rubric: List of validation criteria
             expected_tools: Expected MCP tools to be called
-            build_command: Optional build command (e.g., 'npm run build')
+            build_command: Optional build command (e.g., 'npm install && npm run build')
             build_working_dir: Optional build working directory (relative to mcp_repo_root)
-            install_command: Optional install command (e.g., 'npm install')
             modifies_code: Whether task modifies files (for cleanup)
             max_turns: Maximum conversation turns
         """
@@ -85,7 +89,6 @@ class EnablementTask(Task):
         self.expected_tools = expected_tools or ['get_enablement_guide']
         self.build_command = build_command
         self.build_working_dir = build_working_dir
-        self.install_command = install_command
         self.modifies_code = modifies_code
 
     def get_prompt_for_project(self, mcp_repo_root: Path) -> list[str]:
@@ -149,7 +152,6 @@ My application directory is: {app_abs_path}"""
                 BuildValidator(
                     command=self.build_command,
                     working_dir=build_working_dir,
-                    install_command=self.install_command,
                 )
             )
 
@@ -168,31 +170,68 @@ My application directory is: {app_abs_path}"""
             "Use get_validators_for_project(mcp_repo_root) instead to provide absolute paths"
         )
 
-    @classmethod
-    def from_dict(cls, task_dict: dict) -> 'EnablementTask':
-        """Create EnablementTask from JSON dictionary.
+    def cleanup(self, mcp_repo_root: Path):
+        """Clean up git changes made by enablement agent.
+
+        Resets git state for paths specified in git_paths.
 
         Args:
-            task_dict: Dictionary from enablement_tasks.json
-
-        Returns:
-            EnablementTask instance
+            mcp_repo_root: Absolute path to MCP repository root
         """
-        # Extract build config if present
-        build_config = task_dict.get('build_config', {})
+        if not self.git_paths:
+            logger.warning('No git_paths specified to clean')
+            return
 
-        return cls(
-            id=task_dict['id'],
-            git_paths=task_dict['git_paths'],
-            iac_dir=task_dict['iac_dir'],
-            app_dir=task_dict['app_dir'],
-            language=task_dict['language'],
-            framework=task_dict['framework'],
-            platform=task_dict['platform'],
-            validation_rubric=task_dict['validation_rubric'],
-            expected_tools=task_dict.get('expected_tools', ['get_enablement_guide']),
-            build_command=build_config.get('command'),
-            build_working_dir=build_config.get('working_dir'),
-            install_command=build_config.get('install_command'),
-            modifies_code=task_dict.get('modifies_code', True),
-        )
+        try:
+            for rel_path in self.git_paths:
+                full_path = str(mcp_repo_root / rel_path)
+                logger.debug(f'Cleaning path: {full_path}')
+                subprocess.run(
+                    ['git', 'checkout', 'HEAD', '--', full_path],
+                    capture_output=True,
+                    timeout=10,
+                )
+                subprocess.run(
+                    ['git', 'clean', '-fd', full_path],
+                    capture_output=True,
+                    timeout=10,
+                )
+            logger.debug(f'Reset git state for: {", ".join(self.git_paths)}')
+        except Exception as e:
+            logger.warning(f'Failed to reset git state: {e}')
+
+
+# Task definitions
+TASKS = [
+    EnablementTask(
+        id="ec2_python_flask",
+        git_paths=[
+            "samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk",
+            "samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/sample-apps/python/flask",
+        ],
+        iac_dir="samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk",
+        app_dir="samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/sample-apps/python/flask",
+        language="python",
+        framework="flask",
+        platform="ec2",
+        build_command="npm install && npm run build",
+        build_working_dir="samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk",
+        expected_tools=["get_enablement_guide"],
+        modifies_code=True,
+        validation_rubric=[
+            "IAM: CloudWatchAgentServerPolicy is attached to EC2 instance role",
+            "Prerequisites: System dependencies installed (wget, docker, python3-pip)",
+            "CloudWatch Agent: Downloaded, installed, and configured with application_signals",
+            "CloudWatch Agent: Started successfully using amazon-cloudwatch-agent-ctl",
+            "ADOT: aws-opentelemetry-distro installed via pip3 in UserData",
+            "Dockerfile (if Docker): Installs aws-opentelemetry-distro AND uses opentelemetry-instrument wrapper in CMD",
+            "OTel Config: Basic exporters set (OTEL_METRICS_EXPORTER=none, OTEL_LOGS_EXPORTER=none, OTEL_AWS_APPLICATION_SIGNALS_ENABLED=true)",
+            "OTel Config: Python-specific settings (OTEL_PYTHON_DISTRO=aws_distro, OTEL_PYTHON_CONFIGURATOR=aws_configurator)",
+            "OTel Config: Protocol and sampling (OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf, OTEL_TRACES_SAMPLER=xray)",
+            "OTel Config: Endpoints (OTEL_TRACES_SAMPLER_ARG with localhost:2000, OTEL_AWS_APPLICATION_SIGNALS_EXPORTER_ENDPOINT with localhost:4316/v1/metrics, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT with localhost:4316/v1/traces)",
+            "OTel Config: Service name resource attribute set",
+            "Application Startup: If Docker, uses docker run with -e flags and --network host. If non-Docker, uses opentelemetry-instrument wrapper with export env vars.",
+            "Code Integrity: Only IaC/Dockerfile modified, application code unchanged",
+        ],
+    ),
+]

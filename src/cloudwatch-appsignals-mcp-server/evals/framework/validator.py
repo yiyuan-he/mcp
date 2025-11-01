@@ -222,20 +222,17 @@ class BuildValidator(Validator):
         self,
         command: str,
         working_dir: Path,
-        install_command: Optional[str] = None,
         timeout: int = 120,
     ):
         """Initialize build validator.
 
         Args:
-            command: Build command to execute (e.g., 'npm run build')
+            command: Build command to execute (e.g., 'npm install && npm run build')
             working_dir: Directory to run command in
-            install_command: Optional install command (e.g., 'npm install')
             timeout: Command timeout in seconds
         """
         self.command = command
         self.working_dir = working_dir
-        self.install_command = install_command
         self.timeout = timeout
 
     def get_name(self) -> str:
@@ -258,38 +255,16 @@ class BuildValidator(Validator):
         Returns:
             Dictionary with build validation results
         """
-        # Install dependencies if specified
-        if self.install_command:
-            should_install = False
-            if 'npm' in self.install_command and not (
-                self.working_dir / 'node_modules'
-            ).exists():
-                should_install = True
-
-            if should_install:
-                logger.info(f'Running install command: {self.install_command}')
-                try:
-                    install_result = subprocess.run(
-                        self.install_command.split(),
-                        cwd=self.working_dir,
-                        capture_output=True,
-                        text=True,
-                        timeout=self.timeout,
-                    )
-                    if install_result.returncode != 0:
-                        logger.error(f'Install failed: {install_result.stderr}')
-                except Exception as e:
-                    logger.error(f'Failed to run install command: {e}')
-
         # Run build command
         logger.info(f'Running build command: {self.command}')
         try:
             build_result = subprocess.run(
-                self.command.split(),
+                self.command,
                 cwd=self.working_dir,
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
+                shell=True,
             )
 
             result = {
