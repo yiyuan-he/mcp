@@ -91,15 +91,16 @@ class EnablementTask(Task):
         self.build_working_dir = build_working_dir
         self.modifies_code = modifies_code
 
-    def get_prompt_for_project(self, mcp_repo_root: Path) -> list[str]:
+    def get_prompt(self, context: dict) -> list[str]:
         """Return enablement prompt with absolute paths.
 
         Args:
-            mcp_repo_root: Absolute path to MCP repository root
+            context: Runtime context with 'mcp_repo_root' key
 
         Returns:
             List with single prompt
         """
+        mcp_repo_root = context['mcp_repo_root']
         iac_abs_path = mcp_repo_root / self.iac_dir
         app_abs_path = mcp_repo_root / self.app_dir
 
@@ -110,31 +111,31 @@ My application directory is: {app_abs_path}"""
 
         return [prompt]
 
-    def get_prompt(self) -> list[str]:
-        """This should not be called directly. Use get_prompt_for_project() instead."""
-        raise NotImplementedError(
-            "Use get_prompt_for_project(mcp_repo_root) instead to provide absolute paths"
-        )
-
     @property
     def rubric(self) -> list[str]:
         """Return validation rubric."""
         return self.validation_rubric
 
-    def get_captors(self):
+    def get_captors(self, context: dict):
         """Return captors for this task.
 
         Captures git diff to evaluate code modifications.
+
+        Args:
+            context: Runtime context (unused)
+
+        Returns:
+            List of captors
         """
         from framework import GitDiffCaptor
 
         return [GitDiffCaptor(git_paths=self.git_paths)]
 
-    def get_validators_for_project(self, mcp_repo_root: Path):
+    def get_validators(self, context: dict):
         """Return validators for this task.
 
         Args:
-            mcp_repo_root: Absolute path to MCP repository root
+            context: Runtime context with 'mcp_repo_root' key
 
         Returns:
             List of validators (BuildValidator and LLMJudgeValidator)
@@ -142,6 +143,7 @@ My application directory is: {app_abs_path}"""
         from framework import BuildValidator, LLMJudgeValidator
         from framework.constants import CODE_MODIFICATION_VALIDATION_PROMPT
 
+        mcp_repo_root = context['mcp_repo_root']
         validators = []
 
         # Add build validator if build config provided
@@ -164,23 +166,19 @@ My application directory is: {app_abs_path}"""
 
         return validators
 
-    def get_validators(self):
-        """This should not be called directly. Use get_validators_for_project() instead."""
-        raise NotImplementedError(
-            "Use get_validators_for_project(mcp_repo_root) instead to provide absolute paths"
-        )
-
-    def cleanup(self, mcp_repo_root: Path):
+    def cleanup(self, context: dict):
         """Clean up git changes made by enablement agent.
 
         Resets git state for paths specified in git_paths.
 
         Args:
-            mcp_repo_root: Absolute path to MCP repository root
+            context: Runtime context with 'mcp_repo_root' key
         """
         if not self.git_paths:
             logger.warning('No git_paths specified to clean')
             return
+
+        mcp_repo_root = context['mcp_repo_root']
 
         try:
             for rel_path in self.git_paths:

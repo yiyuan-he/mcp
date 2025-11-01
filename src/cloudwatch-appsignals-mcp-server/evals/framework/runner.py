@@ -137,11 +137,14 @@ class EvalRunner:
                     f'Connected to MCP server with {len(tools_response.tools)} tools'
                 )
 
-                # Get prompts from task (use enablement-specific method if available)
-                if hasattr(task, 'get_prompt_for_project'):
-                    prompts = task.get_prompt_for_project(mcp_repo_root)
-                else:
-                    prompts = task.get_prompt()
+                # Create context for task
+                context = {
+                    'mcp_repo_root': mcp_repo_root,
+                    'bedrock_client': bedrock_client,
+                }
+
+                # Get prompts from task
+                prompts = task.get_prompt(context)
 
                 # Run separate eval for each prompt (isolated contexts)
                 all_results = []
@@ -162,24 +165,18 @@ class EvalRunner:
                         max_turns=task.max_turns,
                     )
 
-                    # Execute captors if task defines them
+                    # Execute captors
                     captured_data = {'prompt_index': i, 'prompt': prompt}
-                    if hasattr(task, 'get_captors'):
-                        captors = task.get_captors()
-                        for captor in captors:
-                            captor_output = captor.capture(
-                                messages, metrics_tracker, mcp_repo_root
-                            )
-                            captured_data.update(captor_output)
+                    captors = task.get_captors(context)
+                    for captor in captors:
+                        captor_output = captor.capture(
+                            messages, metrics_tracker, mcp_repo_root
+                        )
+                        captured_data.update(captor_output)
 
-                    # Execute validators if task defines them
+                    # Execute validators
                     validation_results = []
-                    if hasattr(task, 'get_validators_for_project'):
-                        validators = task.get_validators_for_project(mcp_repo_root)
-                    elif hasattr(task, 'get_validators'):
-                        validators = task.get_validators()
-                    else:
-                        validators = []
+                    validators = task.get_validators(context)
 
                     for validator in validators:
                         validation_result = await validator.validate(

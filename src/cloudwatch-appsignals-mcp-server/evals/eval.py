@@ -209,11 +209,10 @@ async def main():
         for task, result in zip(tasks, results):
             report_task_results(task, result)
 
-            # Call task-specific cleanup if it exists
-            if hasattr(task, 'cleanup') and not args.no_cleanup:
-                task.cleanup(mcp_repo_root)
-            elif not args.no_cleanup and hasattr(task, 'modifies_code') and task.modifies_code:
-                logger.debug(f'Skipping cleanup for {task.id} (no cleanup method defined)')
+            # Call task cleanup
+            if not args.no_cleanup:
+                context = {'mcp_repo_root': mcp_repo_root}
+                task.cleanup(context)
 
     except Exception as e:
         logger.error(f'Evaluation failed: {e}')

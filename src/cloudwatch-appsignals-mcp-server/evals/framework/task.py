@@ -20,7 +20,7 @@ and optional mock configurations.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -29,6 +29,10 @@ class Task(ABC):
 
     Subclasses must implement get_prompt() and rubric property to define
     the task prompt(s) and validation criteria.
+
+    Context dictionary contains runtime information:
+        - mcp_repo_root: Path to MCP repository root
+        - bedrock_client: Boto3 Bedrock client (for validators)
 
     Attributes:
         id: Unique identifier for the task
@@ -39,25 +43,30 @@ class Task(ABC):
     max_turns: int = 20
 
     @abstractmethod
-    def get_prompt(self) -> list[str]:
+    def get_prompt(self, context: Dict[str, Any]) -> list[str]:
         """Return task prompt(s) to send to the agent.
 
         Always returns a list, even for single prompts. Multiple prompts
         will be sent sequentially to the agent.
 
+        Args:
+            context: Runtime context dictionary with keys:
+                - mcp_repo_root: Path to MCP repository root
+                - bedrock_client: Boto3 Bedrock client
+
         Returns:
             List of prompts to send sequentially
 
         Example:
-            # Single prompt
-            return ["Enable Application Signals for Flask app"]
+            # Simple prompt (ignores context)
+            def get_prompt(self, context):
+                return ["List services with high latency"]
 
-            # Multiple prompts for sequential interaction
-            return [
-                "What services have high latency?",
-                "Check the database metrics",
-                "What's the root cause?"
-            ]
+            # Complex prompt (uses context for paths)
+            def get_prompt(self, context):
+                mcp_repo_root = context['mcp_repo_root']
+                path = mcp_repo_root / self.iac_dir
+                return [f"Enable Application Signals at {path}"]
         """
         pass
 
@@ -77,6 +86,45 @@ class Task(ABC):
             ]
         """
         pass
+
+    def get_captors(self, context: Dict[str, Any]) -> List[Any]:
+        """Return captors for this task.
+
+        Override this method to specify what data to capture from agent execution.
+
+        Args:
+            context: Runtime context dictionary
+
+        Returns:
+            List of Captor instances
+
+        Example:
+            from framework import GitDiffCaptor
+            return [GitDiffCaptor(git_paths=self.paths)]
+        """
+        return []
+
+    def get_validators(self, context: Dict[str, Any]) -> List[Any]:
+        """Return validators for this task.
+
+        Override this method to specify how to validate task completion.
+
+        Args:
+            context: Runtime context dictionary with keys:
+                - mcp_repo_root: Path to MCP repository root
+                - bedrock_client: Boto3 Bedrock client
+
+        Returns:
+            List of Validator instances
+
+        Example:
+            from framework import BuildValidator, LLMJudgeValidator
+            return [
+                BuildValidator(command="npm run build", working_dir=...),
+                LLMJudgeValidator(validation_prompt_template=...)
+            ]
+        """
+        return []
 
     def get_mocks(self) -> Optional[dict]:
         """Return mock configuration for this task.
@@ -100,6 +148,17 @@ class Task(ABC):
             }
         """
         return None
+
+    def cleanup(self, context: Dict[str, Any]) -> None:
+        """Clean up after task execution.
+
+        Override this method to perform cleanup (e.g., reset git state).
+
+        Args:
+            context: Runtime context dictionary with keys:
+                - mcp_repo_root: Path to MCP repository root
+        """
+        pass
 
     def __str__(self) -> str:
         """String representation of the task."""
