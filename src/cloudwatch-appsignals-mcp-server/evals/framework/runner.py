@@ -185,8 +185,7 @@ class EvalRunner:
                         validation_results.append(validation_result)
 
                     # Calculate metrics for this prompt
-                    expected_tools = getattr(task, 'expected_tools', [])
-                    metrics = metrics_tracker.get_metrics(expected_tools=expected_tools)
+                    metrics = metrics_tracker.get_metrics(expected_tools=task.expected_tools)
 
                     # Aggregate results for this prompt
                     overall_pass = all(

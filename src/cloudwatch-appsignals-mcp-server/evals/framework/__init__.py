@@ -30,7 +30,6 @@ from .agent import execute_tool, run_agent_loop
 from .file_tools import get_file_tools
 from .mcp_client import connect_to_mcp_server, convert_mcp_tools_to_bedrock
 from .metrics import MetricsTracker
-from .validation import run_build_validation, validate_with_llm
 
 
 __all__ = [
@@ -60,6 +59,4 @@ __all__ = [
     'get_file_tools',
     'execute_tool',
     'run_agent_loop',
-    'validate_with_llm',
-    'run_build_validation',
 ]

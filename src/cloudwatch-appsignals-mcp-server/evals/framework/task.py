@@ -37,10 +37,17 @@ class Task(ABC):
     Attributes:
         id: Unique identifier for the task
         max_turns: Maximum conversation turns allowed (default: 20)
+        expected_tools: List of MCP tool names expected to be called (for hit rate metric)
     """
 
     id: str
     max_turns: int = 20
+    expected_tools: List[str] = None
+
+    def __post_init__(self):
+        """Initialize expected_tools to empty list if None."""
+        if self.expected_tools is None:
+            self.expected_tools = []
 
     @abstractmethod
     def get_prompt(self, context: Dict[str, Any]) -> list[str]:
