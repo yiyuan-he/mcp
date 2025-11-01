@@ -1,0 +1,32 @@
+{
+  "AuditFindings": [
+    {
+      "KeyAttributes": {
+        "Name": "CheckoutService",
+        "Type": "Service"
+      },
+      "Type": "Service",
+      "AuditorResults": [
+        {
+          "Auditor": "slo",
+          "Description": "SLO BREACH DETECTED: Availability SLO is breached. Target: 99.5%, Actual: 94.2% (5.3% below target). This represents a significant degradation in service availability.",
+          "Severity": "HIGH"
+        }
+      ]
+    },
+    {
+      "KeyAttributes": {
+        "Name": "PaymentService",
+        "Type": "Service"
+      },
+      "Type": "Service",
+      "AuditorResults": [
+        {
+          "Auditor": "slo",
+          "Description": "All SLOs meeting targets. Availability: 99.98%, Latency P99: 145ms.",
+          "Severity": "NONE"
+        }
+      ]
+    }
+  ]
+}

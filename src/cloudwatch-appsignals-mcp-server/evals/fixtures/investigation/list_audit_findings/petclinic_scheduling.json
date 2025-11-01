@@ -1,0 +1,89 @@
+{
+  "AuditFindings": [
+    {
+      "KeyAttributes": {
+        "Name": "PetClinic",
+        "Type": "Service",
+        "Environment": "prod"
+      },
+      "Type": "Service",
+      "Operation": "POST /appointments",
+      "AuditorResults": [
+        {
+          "Auditor": "slo",
+          "Description": "CRITICAL SLO BREACH: Availability SLO for PetClinic service is severely breached. Target: 99.0%, Actual: 87.5% (11.5% below target). This indicates a major availability issue affecting user requests.",
+          "Severity": "CRITICAL"
+        },
+        {
+          "Auditor": "operation_metric",
+          "Description": "HIGH ERROR RATE DETECTED: POST /appointments operation showing 12.5% error rate (baseline: 0.2%). Average latency increased from 200ms to 2.5s. Errors primarily occur during appointment booking operations.",
+          "Severity": "CRITICAL"
+        },
+        {
+          "Auditor": "trace",
+          "Description": "TRACE ANALYSIS - ROOT CAUSE IDENTIFIED:\n\nAnalyzed 450 failed traces for POST /appointments operation. Common exception pattern found:\n\nException Type: software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughputExceededException\nException Message: \"The level of configured provisioned throughput for the table was exceeded. Consider increasing your provisioning level with the UpdateTable API. (Service: DynamoDb, Status Code: 400, Request ID: 6HOGQ...)\"\n\nCall Stack:\n1. PetClinic Service - POST /appointments (2500ms, ERROR)\n2. SchedulingService - createAppointment() (2400ms, ERROR)\n3. DynamoDB - PutItem on appointments table (2300ms, THROTTLED)\n\nAnalysis: 95% of failed requests show DynamoDB throttling. The appointments table is configured with 5 WCU (Write Capacity Units) but is receiving ~450 write requests during peak hours, causing systematic throttling.\n\nRecommendation: Increase DynamoDB table capacity or enable auto-scaling.",
+          "Severity": "CRITICAL"
+        },
+        {
+          "Auditor": "dependency_metric",
+          "Description": "DEPENDENCY ISSUE: DynamoDB dependency shows high throttling rate. 95% of requests to appointments table are being throttled. This is blocking the scheduling service from completing appointment bookings.",
+          "Severity": "HIGH"
+        }
+      ],
+      "DependencyGraph": {
+        "Nodes": [
+          {
+            "NodeId": "node-1",
+            "Name": "PetClinic",
+            "Type": "Service",
+            "KeyAttributes": {
+              "Name": "PetClinic",
+              "Type": "Service"
+            },
+            "Operation": "POST /appointments",
+            "Status": "ERROR",
+            "Duration": 2500
+          },
+          {
+            "NodeId": "node-2",
+            "Name": "SchedulingService",
+            "Type": "Service",
+            "KeyAttributes": {
+              "Name": "SchedulingService",
+              "Type": "Service"
+            },
+            "Operation": "createAppointment",
+            "Status": "ERROR",
+            "Duration": 2400
+          },
+          {
+            "NodeId": "node-3",
+            "Name": "DynamoDB",
+            "Type": "AWS::DynamoDB::Table",
+            "KeyAttributes": {
+              "Name": "appointments",
+              "Type": "Resource",
+              "ResourceType": "AWS::DynamoDB::Table"
+            },
+            "Status": "THROTTLED",
+            "Duration": 2300
+          }
+        ],
+        "Edges": [
+          {
+            "SourceNodeId": "node-1",
+            "DestinationNodeId": "node-2",
+            "ConnectionType": "DIRECT",
+            "Duration": 2400
+          },
+          {
+            "SourceNodeId": "node-2",
+            "DestinationNodeId": "node-3",
+            "ConnectionType": "DIRECT",
+            "Duration": 2300
+          }
+        ]
+      }
+    }
+  ]
+}

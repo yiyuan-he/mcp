@@ -1,0 +1,24 @@
+{
+  "AuditFindings": [
+    {
+      "KeyAttributes": {
+        "Name": "PaymentService",
+        "Type": "Service",
+        "Environment": "prod"
+      },
+      "Type": "Service",
+      "AuditorResults": [
+        {
+          "Auditor": "slo",
+          "Description": "All SLOs are meeting targets. Service availability is 99.95%, latency P99 is 150ms (target: <200ms).",
+          "Severity": "NONE"
+        },
+        {
+          "Auditor": "operation_metric",
+          "Description": "All operations performing normally. No anomalies detected in error rates or latency.",
+          "Severity": "NONE"
+        }
+      ]
+    }
+  ]
+}
