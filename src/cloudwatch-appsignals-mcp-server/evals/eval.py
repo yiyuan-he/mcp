@@ -214,6 +214,10 @@ async def main():
                 context = {'mcp_repo_root': mcp_repo_root}
                 task.cleanup(context)
 
+        # Give subprocess time to clean up before event loop closes (Python < 3.11)
+        # MCP SDK's stdio_client relies on __del__ for subprocess cleanup
+        await asyncio.sleep(0.1)
+
     except Exception as e:
         logger.error(f'Evaluation failed: {e}')
         if args.verbose:
