@@ -79,11 +79,12 @@ def apply_mocks(mock_config: dict, fixtures_dir: Path = None):
         print(f'Warning: Failed to apply mocks: {e}', file=sys.stderr)
 
 
-def run_server(server_path: str):
+def run_server(server_path: str, server_cwd: str = None):
     """Import and run the MCP server module.
 
     Args:
         server_path: Path to server.py file
+        server_cwd: Working directory for the server (optional, auto-detected if not provided)
     """
     server_file = Path(server_path)
     if not server_file.exists():
@@ -95,7 +96,12 @@ def run_server(server_path: str):
     package_name = server_dir.name
     namespace_dir = server_dir.parent
     namespace_name = namespace_dir.name
-    working_dir = namespace_dir.parent
+
+    # Use provided working directory or auto-detect
+    if server_cwd:
+        working_dir = Path(server_cwd)
+    else:
+        working_dir = namespace_dir.parent
 
     # Construct module path
     module_path = f'{namespace_name}.{package_name}.server'
@@ -106,8 +112,16 @@ def run_server(server_path: str):
         sys.path.insert(0, str(working_dir))
 
     try:
-        # Import and run the server module
+        # Import the server module
         module = importlib.import_module(module_path)
+
+        # Call main() to start the server
+        # (The if __name__ == '__main__' block doesn't run when imported as a module)
+        if hasattr(module, 'main'):
+            module.main()
+        else:
+            print(f'Error: Server module {module_path} has no main() function', file=sys.stderr)
+            sys.exit(1)
     except Exception as e:
         print(f'Error running server: {e}', file=sys.stderr)
         import traceback
@@ -118,11 +132,13 @@ def run_server(server_path: str):
 
 def main():
     """Main entry point."""
-    if len(sys.argv) < 2:
-        print('Usage: mock_server_wrapper.py <server_path>', file=sys.stderr)
-        sys.exit(1)
+    import argparse
 
-    server_path = sys.argv[1]
+    parser = argparse.ArgumentParser(description='MCP server wrapper with mocking support')
+    parser.add_argument('server_path', help='Path to MCP server.py file')
+    parser.add_argument('--server-cwd', help='Working directory for the server', default=None)
+
+    args = parser.parse_args()
 
     # Load mock configuration
     mock_config = load_mock_config()
@@ -138,7 +154,7 @@ def main():
         apply_mocks(mock_config, fixtures_dir)
 
     # Run server
-    run_server(server_path)
+    run_server(args.server_path, args.server_cwd)
 
 
 if __name__ == '__main__':

@@ -19,6 +19,7 @@ Provides connection and tool conversion utilities for MCP servers.
 
 import json
 import os
+import sys
 import tempfile
 from mcp import StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -92,36 +93,40 @@ def connect_to_mcp_server(
     # If mocks provided, write to temp file and use wrapper
     if mock_config:
         # Create temp file for mock config
+        # Note: We don't delete this file immediately because the subprocess needs it.
+        # It will be cleaned up by the OS temp directory cleanup.
         mock_fd, mock_file_path = tempfile.mkstemp(suffix='.json', prefix='mcp_mocks_')
-        try:
-            with os.fdopen(mock_fd, 'w') as f:
-                json.dump(mock_config, f)
+        with os.fdopen(mock_fd, 'w') as f:
+            json.dump(mock_config, f)
 
-            # Set environment variable for wrapper to find mocks
-            env['MCP_EVAL_MOCK_FILE'] = mock_file_path
+        # Set environment variable for wrapper to find mocks
+        env['MCP_EVAL_MOCK_FILE'] = mock_file_path
 
-            # Get path to mock_server_wrapper.py
-            wrapper_path = Path(__file__).parent / 'mock_server_wrapper.py'
+        # Use wrapper to start server with mocks
+        # Run wrapper as a module so relative imports work
+        # cwd must be where 'framework' package is (evals directory)
+        evals_dir = Path(__file__).parent.parent
 
-            # Use wrapper to start server with mocks
-            server_params = StdioServerParameters(
-                command='python',
-                args=[str(wrapper_path), str(server_file)],
-                env=env,
-                cwd=str(working_dir),
-            )
+        # Use sys.executable to ensure we use the same Python interpreter (with venv)
+        server_params = StdioServerParameters(
+            command=sys.executable,
+            args=[
+                '-m',
+                'framework.mock_server_wrapper',
+                str(server_file),
+                '--server-cwd',
+                str(working_dir),
+            ],
+            env=env,
+            cwd=str(evals_dir),
+        )
 
-            return stdio_client(server_params)
-        finally:
-            # Clean up temp file after stdio_client returns
-            try:
-                os.unlink(mock_file_path)
-            except Exception:
-                pass
+        return stdio_client(server_params)
     else:
         # Direct connection without mocks - run as module
+        # Use sys.executable to ensure we use the same Python interpreter (with venv)
         server_params = StdioServerParameters(
-            command='python',
+            command=sys.executable,
             args=['-m', module_path],
             env=env,
             cwd=str(working_dir),
