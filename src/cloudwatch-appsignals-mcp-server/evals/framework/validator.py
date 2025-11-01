@@ -20,12 +20,11 @@ was completed successfully.
 
 import subprocess
 import time
+from .constants import DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE
 from abc import ABC, abstractmethod
 from loguru import logger
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-from .constants import DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE
+from typing import Any, Dict, List
 
 
 class Validator(ABC):
@@ -80,7 +79,7 @@ class LLMJudgeValidator(Validator):
 
     def get_name(self) -> str:
         """Return validator name."""
-        return "LLM Judge"
+        return 'LLM Judge'
 
     async def validate(
         self,
@@ -156,7 +155,7 @@ class LLMJudgeValidator(Validator):
 
         # Git diff
         if 'git_diff' in captured_data and captured_data['git_diff']:
-            sections.append(f"**Git Diff:**\n```\n{captured_data['git_diff']}\n```")
+            sections.append(f'**Git Diff:**\n```\n{captured_data["git_diff"]}\n```')
 
         # Build result
         if 'build_result' in captured_data:
@@ -172,14 +171,12 @@ class LLMJudgeValidator(Validator):
 
         # Final response
         if 'final_response' in captured_data:
-            sections.append(
-                f"**Agent Response:**\n{captured_data['final_response']}"
-            )
+            sections.append(f'**Agent Response:**\n{captured_data["final_response"]}')
 
         # Tool calls
         if 'tool_calls' in captured_data:
             tool_names = [t['name'] for t in captured_data['tool_calls']]
-            sections.append(f"**Tools Called:** {', '.join(tool_names)}")
+            sections.append(f'**Tools Called:** {", ".join(tool_names)}')
 
         return '\n\n'.join(sections)
 
@@ -237,7 +234,7 @@ class BuildValidator(Validator):
 
     def get_name(self) -> str:
         """Return validator name."""
-        return "Build"
+        return 'Build'
 
     async def validate(
         self,
@@ -315,5 +312,10 @@ class BuildValidator(Validator):
                         'reasoning': f'Build error: {str(e)}',
                     }
                 ],
-                'build_result': {'exit_code': -1, 'stdout': '', 'stderr': str(e), 'success': False},
+                'build_result': {
+                    'exit_code': -1,
+                    'stdout': '',
+                    'stderr': str(e),
+                    'success': False,
+                },
             }

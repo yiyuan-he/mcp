@@ -19,20 +19,21 @@ to enable Application Signals monitoring on various platforms.
 """
 
 import subprocess
+from framework import (
+    BuildValidator,
+    GitDiffCaptor,
+    LLMJudgeValidator,
+    Task,
+)
 from loguru import logger
 from pathlib import Path
 from typing import Optional
 
-from framework import (
-    Task,
-    GitDiffCaptor,
-    LLMJudgeValidator,
-    BuildValidator,
-)
-
 
 # Server path for this tool
-SERVER_PATH = Path(__file__).parent.parent / 'awslabs' / 'cloudwatch_appsignals_mcp_server' / 'server.py'
+SERVER_PATH = (
+    Path(__file__).parent.parent / 'awslabs' / 'cloudwatch_appsignals_mcp_server' / 'server.py'
+)
 
 
 class EnablementTask(Task):
@@ -127,8 +128,6 @@ My application directory is: {app_abs_path}"""
         Returns:
             List of captors
         """
-        from framework import GitDiffCaptor
-
         return [GitDiffCaptor(git_paths=self.git_paths)]
 
     def get_validators(self, context: dict):
@@ -140,7 +139,6 @@ My application directory is: {app_abs_path}"""
         Returns:
             List of validators (BuildValidator and LLMJudgeValidator)
         """
-        from framework import BuildValidator, LLMJudgeValidator
         from framework.constants import CODE_MODIFICATION_VALIDATION_PROMPT
 
         mcp_repo_root = context['mcp_repo_root']
@@ -159,9 +157,7 @@ My application directory is: {app_abs_path}"""
 
         # Add LLM judge validator
         validators.append(
-            LLMJudgeValidator(
-                validation_prompt_template=CODE_MODIFICATION_VALIDATION_PROMPT
-            )
+            LLMJudgeValidator(validation_prompt_template=CODE_MODIFICATION_VALIDATION_PROMPT)
         )
 
         return validators
@@ -202,34 +198,34 @@ My application directory is: {app_abs_path}"""
 # Task definitions
 TASKS = [
     EnablementTask(
-        id="ec2_python_flask",
+        id='ec2_python_flask',
         git_paths=[
-            "samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk",
-            "samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/sample-apps/python/flask",
+            'samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk',
+            'samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/sample-apps/python/flask',
         ],
-        iac_dir="samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk",
-        app_dir="samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/sample-apps/python/flask",
-        language="python",
-        framework="flask",
-        platform="ec2",
-        build_command="npm install && npm run build",
-        build_working_dir="samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk",
-        expected_tools=["get_enablement_guide"],
+        iac_dir='samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk',
+        app_dir='samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/sample-apps/python/flask',
+        language='python',
+        framework='flask',
+        platform='ec2',
+        build_command='npm install && npm run build',
+        build_working_dir='samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk',
+        expected_tools=['get_enablement_guide'],
         modifies_code=True,
         validation_rubric=[
-            "IAM: CloudWatchAgentServerPolicy is attached to EC2 instance role",
-            "Prerequisites: System dependencies installed (wget, docker, python3-pip)",
-            "CloudWatch Agent: Downloaded, installed, and configured with application_signals",
-            "CloudWatch Agent: Started successfully using amazon-cloudwatch-agent-ctl",
-            "ADOT: aws-opentelemetry-distro installed via pip3 in UserData",
-            "Dockerfile (if Docker): Installs aws-opentelemetry-distro AND uses opentelemetry-instrument wrapper in CMD",
-            "OTel Config: Basic exporters set (OTEL_METRICS_EXPORTER=none, OTEL_LOGS_EXPORTER=none, OTEL_AWS_APPLICATION_SIGNALS_ENABLED=true)",
-            "OTel Config: Python-specific settings (OTEL_PYTHON_DISTRO=aws_distro, OTEL_PYTHON_CONFIGURATOR=aws_configurator)",
-            "OTel Config: Protocol and sampling (OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf, OTEL_TRACES_SAMPLER=xray)",
-            "OTel Config: Endpoints (OTEL_TRACES_SAMPLER_ARG with localhost:2000, OTEL_AWS_APPLICATION_SIGNALS_EXPORTER_ENDPOINT with localhost:4316/v1/metrics, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT with localhost:4316/v1/traces)",
-            "OTel Config: Service name resource attribute set",
-            "Application Startup: If Docker, uses docker run with -e flags and --network host. If non-Docker, uses opentelemetry-instrument wrapper with export env vars.",
-            "Code Integrity: Only IaC/Dockerfile modified, application code unchanged",
+            'IAM: CloudWatchAgentServerPolicy is attached to EC2 instance role',
+            'Prerequisites: System dependencies installed (wget, docker, python3-pip)',
+            'CloudWatch Agent: Downloaded, installed, and configured with application_signals',
+            'CloudWatch Agent: Started successfully using amazon-cloudwatch-agent-ctl',
+            'ADOT: aws-opentelemetry-distro installed via pip3 in UserData',
+            'Dockerfile (if Docker): Installs aws-opentelemetry-distro AND uses opentelemetry-instrument wrapper in CMD',
+            'OTel Config: Basic exporters set (OTEL_METRICS_EXPORTER=none, OTEL_LOGS_EXPORTER=none, OTEL_AWS_APPLICATION_SIGNALS_ENABLED=true)',
+            'OTel Config: Python-specific settings (OTEL_PYTHON_DISTRO=aws_distro, OTEL_PYTHON_CONFIGURATOR=aws_configurator)',
+            'OTel Config: Protocol and sampling (OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf, OTEL_TRACES_SAMPLER=xray)',
+            'OTel Config: Endpoints (OTEL_TRACES_SAMPLER_ARG with localhost:2000, OTEL_AWS_APPLICATION_SIGNALS_EXPORTER_ENDPOINT with localhost:4316/v1/metrics, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT with localhost:4316/v1/traces)',
+            'OTel Config: Service name resource attribute set',
+            'Application Startup: If Docker, uses docker run with -e flags and --network host. If non-Docker, uses opentelemetry-instrument wrapper with export env vars.',
+            'Code Integrity: Only IaC/Dockerfile modified, application code unchanged',
         ],
     ),
 ]

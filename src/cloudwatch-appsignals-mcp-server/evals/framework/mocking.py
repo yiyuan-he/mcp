@@ -56,9 +56,7 @@ class MockHandler(ABC):
         """Remove all patches applied by this handler."""
         pass
 
-    def resolve_fixture(
-        self, value: Any, fixtures_dir: Optional[Path] = None
-    ) -> Any:
+    def resolve_fixture(self, value: Any, fixtures_dir: Optional[Path] = None) -> Any:
         """Resolve fixture references to actual data.
 
         If value is a string path to a JSON file, load and return it.
@@ -122,9 +120,7 @@ class Boto3MockHandler(MockHandler):
         for service, operations in mock_config.items():
             resolved_config[service] = {}
             for operation, response in operations.items():
-                resolved_config[service][operation] = self.resolve_fixture(
-                    response, fixtures_dir
-                )
+                resolved_config[service][operation] = self.resolve_fixture(response, fixtures_dir)
 
         self.mock_responses = resolved_config
 
@@ -211,9 +207,7 @@ class MockHandlerRegistry:
         """
         return list(self._handlers.keys())
 
-    def patch_all(
-        self, mock_config: Dict[str, Any], fixtures_dir: Optional[Path] = None
-    ) -> None:
+    def patch_all(self, mock_config: Dict[str, Any], fixtures_dir: Optional[Path] = None) -> None:
         """Apply all mocks from configuration.
 
         Args:
@@ -227,7 +221,7 @@ class MockHandlerRegistry:
             else:
                 raise ValueError(
                     f"No mock handler registered for '{library_name}'. "
-                    f"Supported libraries: {', '.join(self.list_supported_libraries())}"
+                    f'Supported libraries: {", ".join(self.list_supported_libraries())}'
                 )
 
     def unpatch_all(self) -> None:

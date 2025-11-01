@@ -22,17 +22,14 @@ EvalRunner coordinates:
 - Results reporting
 """
 
+from .agent import run_agent_loop
+from .mcp_client import connect_to_mcp_server
+from .metrics import MetricsTracker
+from .task import Task
 from loguru import logger
 from mcp import ClientSession
 from pathlib import Path
 from typing import Any, Dict, List
-
-from .agent import run_agent_loop
-from .captor import Captor
-from .mcp_client import connect_to_mcp_server
-from .metrics import MetricsTracker
-from .task import Task
-from .validator import Validator
 
 
 class EvalRunner:
@@ -93,9 +90,7 @@ class EvalRunner:
             logger.info(f'Running task: {task.id}')
 
             try:
-                result = await self.run_task(
-                    task, bedrock_client, verbose, mcp_repo_root
-                )
+                result = await self.run_task(task, bedrock_client, verbose, mcp_repo_root)
                 results.append(result)
             except Exception as e:
                 logger.error(f'Task {task.id} failed: {e}')
@@ -133,9 +128,7 @@ class EvalRunner:
 
                 # Get MCP tools
                 tools_response = await session.list_tools()
-                logger.debug(
-                    f'Connected to MCP server with {len(tools_response.tools)} tools'
-                )
+                logger.debug(f'Connected to MCP server with {len(tools_response.tools)} tools')
 
                 # Create context for task
                 context = {
@@ -169,9 +162,7 @@ class EvalRunner:
                     captured_data = {'prompt_index': i, 'prompt': prompt}
                     captors = task.get_captors(context)
                     for captor in captors:
-                        captor_output = captor.capture(
-                            messages, metrics_tracker, mcp_repo_root
-                        )
+                        captor_output = captor.capture(messages, metrics_tracker, mcp_repo_root)
                         captured_data.update(captor_output)
 
                     # Execute validators
@@ -188,18 +179,18 @@ class EvalRunner:
                     metrics = metrics_tracker.get_metrics(expected_tools=task.expected_tools)
 
                     # Aggregate results for this prompt
-                    overall_pass = all(
-                        v.get('overall_pass', False) for v in validation_results
-                    )
+                    overall_pass = all(v.get('overall_pass', False) for v in validation_results)
 
-                    all_results.append({
-                        'prompt_index': i,
-                        'prompt': prompt,
-                        'success': overall_pass,
-                        'validation_results': validation_results,
-                        'metrics': metrics,
-                        'captured_data': captured_data,
-                    })
+                    all_results.append(
+                        {
+                            'prompt_index': i,
+                            'prompt': prompt,
+                            'success': overall_pass,
+                            'validation_results': validation_results,
+                            'metrics': metrics,
+                            'captured_data': captured_data,
+                        }
+                    )
 
                 # Aggregate results across all prompts
                 overall_task_pass = all(r['success'] for r in all_results)

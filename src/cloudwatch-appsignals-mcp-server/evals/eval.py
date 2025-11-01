@@ -35,6 +35,7 @@ from loguru import logger
 from pathlib import Path
 from typing import Any, Dict, List
 
+
 logger.remove()
 
 
@@ -49,9 +50,7 @@ def discover_tasks() -> tuple[List[Any], Path]:
     server_path = None
 
     # Find all *_tasks.py files in evals/ directory
-    task_modules = [
-        f.stem for f in evals_dir.glob('*_tasks.py')
-    ]
+    task_modules = [f.stem for f in evals_dir.glob('*_tasks.py')]
 
     logger.debug(f'Discovered task modules: {task_modules}')
 
@@ -76,7 +75,12 @@ def discover_tasks() -> tuple[List[Any], Path]:
 
     # Default server path if not specified
     if server_path is None:
-        server_path = Path(__file__).parent.parent / 'awslabs' / 'cloudwatch_appsignals_mcp_server' / 'server.py'
+        server_path = (
+            Path(__file__).parent.parent
+            / 'awslabs'
+            / 'cloudwatch_appsignals_mcp_server'
+            / 'server.py'
+        )
         logger.debug(f'Using default server path: {server_path}')
 
     return all_tasks, server_path
@@ -121,7 +125,9 @@ def report_task_results(task: Any, result: Dict[str, Any]) -> None:
                 passed = sum(1 for r in criteria_results if r['status'] == 'PASS')
                 total = len(criteria_results)
                 status = '✅ PASS' if validation_result['overall_pass'] else '❌ FAIL'
-                logger.info(f'  Validation ({validator_name}): {status} ({passed}/{total} criteria met)')
+                logger.info(
+                    f'  Validation ({validator_name}): {status} ({passed}/{total} criteria met)'
+                )
 
     # Overall task status
     status = '✅ PASS' if result['success'] else '❌ FAIL'
@@ -163,7 +169,7 @@ async def main():
         tasks = [t for t in all_tasks if t.id == args.task]
         if not tasks:
             logger.error(f"Task '{args.task}' not found")
-            logger.info(f"Available tasks: {', '.join(t.id for t in all_tasks)}")
+            logger.info(f'Available tasks: {", ".join(t.id for t in all_tasks)}')
             sys.exit(1)
     else:
         tasks = all_tasks
@@ -200,9 +206,7 @@ async def main():
         # Execute each task
         results = []
         for task in tasks:
-            result = await runner.run_task(
-                task, bedrock_client, args.verbose, mcp_repo_root
-            )
+            result = await runner.run_task(task, bedrock_client, args.verbose, mcp_repo_root)
             results.append(result)
 
         # Report results and cleanup
