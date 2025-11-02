@@ -18,7 +18,7 @@ Validators take captured data and determine if the task
 was completed successfully.
 """
 
-import subprocess
+import asyncio
 import time
 from .constants import DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE
 from abc import ABC, abstractmethod
@@ -254,20 +254,34 @@ class BuildValidator(Validator):
         # Run build command
         logger.info(f'Running build command: {self.command}')
         try:
-            build_result = subprocess.run(
+            # Use asyncio subprocess for proper async execution
+            process = await asyncio.create_subprocess_shell(
                 self.command,
                 cwd=self.working_dir,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout,
-                shell=True,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
 
+            # Wait for completion with timeout
+            try:
+                stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                    process.communicate(), timeout=self.timeout
+                )
+                stdout = stdout_bytes.decode('utf-8', errors='replace')
+                stderr = stderr_bytes.decode('utf-8', errors='replace')
+                exit_code = process.returncode
+            except asyncio.TimeoutError:
+                process.kill()
+                await process.wait()
+                raise TimeoutError(
+                    f'Build command timed out after {self.timeout} seconds'
+                )
+
             result = {
-                'exit_code': build_result.returncode,
-                'stdout': build_result.stdout,
-                'stderr': build_result.stderr,
-                'success': build_result.returncode == 0,
+                'exit_code': exit_code,
+                'stdout': stdout,
+                'stderr': stderr,
+                'success': exit_code == 0,
             }
 
             if result['success']:
@@ -285,7 +299,7 @@ class BuildValidator(Validator):
                     'build_result': result,
                 }
             else:
-                logger.error(f'✗ Build failed with exit code {build_result.returncode}')
+                logger.error(f'✗ Build failed with exit code {exit_code}')
                 return {
                     'validator_name': self.get_name(),
                     'overall_pass': False,
@@ -293,7 +307,7 @@ class BuildValidator(Validator):
                         {
                             'criterion': 'Build succeeds',
                             'status': 'FAIL',
-                            'reasoning': f'Build failed with exit code {build_result.returncode}',
+                            'reasoning': f'Build failed with exit code {exit_code}',
                         }
                     ],
                     'build_result': result,
