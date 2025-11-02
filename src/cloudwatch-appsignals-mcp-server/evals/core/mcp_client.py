@@ -89,6 +89,7 @@ def connect_to_mcp_server(
     env = os.environ.copy()
     if not verbose:
         env['LOGURU_LEVEL'] = 'ERROR'
+        env['MCP_CLOUDWATCH_APPSIGNALS_LOG_LEVEL'] = 'WARNING'
 
     # If mocks provided, write to temp file and use wrapper
     if mock_config:

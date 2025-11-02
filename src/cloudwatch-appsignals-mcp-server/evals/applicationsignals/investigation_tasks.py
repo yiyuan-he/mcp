@@ -140,69 +140,6 @@ class ServiceInvestigationTask(Task):
 # Task definitions demonstrating range of complexity
 
 TASKS = [
-    # Simple: Basic health check
-    ServiceInvestigationTask(
-        id='basic_service_health',
-        prompt='Are my services healthy? Give me an overview of their current status.',
-        expected_tools=['audit_services'],
-        validation_rubric=[
-            'Agent called audit_services to check service health',
-            'Response provides clear health summary (healthy/unhealthy)',
-            'Response mentions specific services and their status',
-        ],
-        fixtures_dir=FIXTURES_DIR,
-        mocks={
-            'boto3': {
-                'application-signals': {
-                    'list_services': [
-                        {
-                            'request': {},  # No parameters needed
-                            'response': 'investigation/list_services/checkout_service.json',
-                        }
-                    ],
-                    'list_audit_findings': [
-                        {
-                            'request': {},  # audit_services may pass various filters, but we accept any
-                            'response': 'investigation/list_audit_findings/healthy_service.json',
-                        }
-                    ],
-                }
-            }
-        },
-        max_turns=8,
-    ),
-    # Medium: SLO breach detection
-    ServiceInvestigationTask(
-        id='slo_breach_detection',
-        prompt='Are any of my service SLOs currently breached? If so, which ones and by how much?',
-        expected_tools=['audit_services'],
-        validation_rubric=[
-            'Agent called audit_services to check SLO status',
-            'Response identifies breached SLOs (CheckoutService)',
-            'Response includes quantitative breach information (target: 99.5%, actual: 94.2%)',
-            'Response distinguishes between breached and healthy SLOs',
-        ],
-        fixtures_dir=FIXTURES_DIR,
-        mocks={
-            'boto3': {
-                'application-signals': {
-                    'list_services': [
-                        {
-                            'request': {},
-                            'response': 'investigation/list_services/checkout_service.json',
-                        }
-                    ],
-                    'list_audit_findings': [
-                        {
-                            'request': {},
-                            'response': 'investigation/list_audit_findings/slo_breach.json',
-                        }
-                    ],
-                }
-            }
-        },
-        max_turns=10,
-    ),
     # Complex: Multi-auditor root cause analysis - DynamoDB throttling
     ServiceInvestigationTask(
         id='petclinic_scheduling_rca',

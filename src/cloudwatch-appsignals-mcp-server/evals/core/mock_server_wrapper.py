@@ -133,12 +133,18 @@ def run_server(server_path: str, server_cwd: str = None):
 def main():
     """Main entry point."""
     import argparse
+    import logging
 
     parser = argparse.ArgumentParser(description='MCP server wrapper with mocking support')
     parser.add_argument('server_path', help='Path to MCP server.py file')
     parser.add_argument('--server-cwd', help='Working directory for the server', default=None)
 
     args = parser.parse_args()
+
+    # Configure MCP SDK logging based on environment variable
+    log_level = os.environ.get('MCP_CLOUDWATCH_APPSIGNALS_LOG_LEVEL', 'INFO').upper()
+    mcp_logger = logging.getLogger('mcp')
+    mcp_logger.setLevel(getattr(logging, log_level))
 
     # Load mock configuration
     mock_config = load_mock_config()

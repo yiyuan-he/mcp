@@ -184,7 +184,15 @@ async def main():
     if args.verbose:
         logger.add(sys.stderr, level='DEBUG', format='<level>{message}</level>')
     else:
-        logger.add(sys.stderr, level='INFO', format='<level>{message}</level>')
+        # Without -v: Show WARNING+ from all modules, but also INFO from cli.py (for eval summary)
+        def eval_filter(record):
+            if record['level'].no >= logger.level('WARNING').no:
+                return True
+            if record['level'].name == 'INFO' and 'cli.py' in record['file'].path:
+                return True
+            return False
+
+        logger.add(sys.stderr, level='DEBUG', format='<level>{message}</level>', filter=eval_filter)
 
     # Resolve task directory (relative to evals/, which is parent of framework/)
     evals_dir = Path(__file__).parent.parent
