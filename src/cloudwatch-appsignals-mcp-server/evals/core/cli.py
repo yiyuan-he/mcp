@@ -42,18 +42,17 @@ from typing import Any, Dict, List
 logger.remove()
 
 
-def discover_tasks(task_dir: Path) -> tuple[List[Any], Dict[str, List[Any]], Path]:
+def discover_tasks(task_dir: Path) -> tuple[List[Any], Dict[str, List[Any]]]:
     """Auto-discover all tasks from *_tasks.py files in the specified directory.
 
     Args:
         task_dir: Path to directory containing task modules
 
     Returns:
-        Tuple of (all_tasks, tasks_by_module, server_path)
+        Tuple of (all_tasks, tasks_by_module)
     """
     all_tasks = []
     tasks_by_module = {}
-    server_path = None
 
     # Add evals directory to Python path so framework imports work in task modules
     evals_dir = task_dir.parent
@@ -83,27 +82,12 @@ def discover_tasks(task_dir: Path) -> tuple[List[Any], Dict[str, List[Any]], Pat
                 tasks_by_module[module_name] = tasks
                 logger.debug(f'Loaded {len(tasks)} tasks from {module_name}')
 
-            # Get server path if defined (first one wins)
-            if server_path is None and hasattr(module, 'SERVER_PATH'):
-                server_path = module.SERVER_PATH
-                logger.debug(f'Using server path from {module_name}: {server_path}')
-
         except Exception as e:
             logger.warning(f'Failed to load tasks from {module_name}: {e}')
             if logger.level('DEBUG').no <= logger._core.min_level:
                 traceback.print_exc()
 
-    # Default server path if not specified
-    if server_path is None:
-        server_path = (
-            Path(__file__).parent.parent.parent
-            / 'awslabs'
-            / 'cloudwatch_appsignals_mcp_server'
-            / 'server.py'
-        )
-        logger.debug(f'Using default server path: {server_path}')
-
-    return all_tasks, tasks_by_module, server_path
+    return all_tasks, tasks_by_module
 
 
 def report_task_results(task: Any, result: Dict[str, Any]) -> None:
@@ -215,7 +199,7 @@ async def main():
     print(f'Starting MCP tool evaluation for {args.task_dir}\n')
 
     # Auto-discover tasks
-    all_tasks, tasks_by_module, server_path = discover_tasks(task_dir)
+    all_tasks, tasks_by_module = discover_tasks(task_dir)
 
     if not all_tasks:
         logger.error('No tasks found in *_tasks.py files')
@@ -269,11 +253,9 @@ async def main():
         logger.error('Make sure AWS credentials are configured')
         sys.exit(1)
 
-    logger.debug(f'MCP server path: {server_path}')
-
     # Create runner and execute tasks
     try:
-        runner = EvalRunner(tasks=tasks, server_path=str(server_path))
+        runner = EvalRunner(tasks=tasks)
 
         # Execute each task
         results = []

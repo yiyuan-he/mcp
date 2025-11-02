@@ -19,7 +19,6 @@ to enable Application Signals monitoring on various platforms.
 """
 
 import subprocess
-from evals import MCP_PROJECT_ROOT
 from evals.core import (
     BuildValidator,
     GitDiffCaptor,
@@ -31,13 +30,15 @@ from pathlib import Path
 from typing import Optional
 
 
-# Server path for this tool
+# MCP server file path
 SERVER_PATH = (
     Path(__file__).parent.parent.parent
     / 'awslabs'
     / 'cloudwatch_appsignals_mcp_server'
     / 'server.py'
 )
+# MCP server working directory (cloudwatch-appsignals-mcp-server root)
+SERVER_CWD = Path(__file__).parent.parent.parent
 
 
 class EnablementTask(Task):
@@ -102,7 +103,21 @@ class EnablementTask(Task):
         Returns:
             Path to cloudwatch-appsignals-mcp-server samples directory
         """
-        return MCP_PROJECT_ROOT / 'samples' / 'cloudwatch-appsignals-mcp-server'
+        # Calculate path to samples: enablement_tasks.py -> applicationsignals/ -> evals/
+        # -> cloudwatch-appsignals-mcp-server/ -> src/ -> mcp/ -> samples/
+        return (
+            Path(__file__).parent.parent.parent.parent.parent
+            / 'samples'
+            / 'cloudwatch-appsignals-mcp-server'
+        )
+
+    def get_server_file(self) -> Path:
+        """Return MCP server file path."""
+        return SERVER_PATH
+
+    def get_server_root_directory(self) -> Path:
+        """Return MCP server root directory."""
+        return SERVER_CWD
 
     def get_prompts(self, context: dict) -> list[str]:
         """Return enablement prompt with absolute paths.

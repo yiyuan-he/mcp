@@ -29,13 +29,15 @@ from evals.core.constants import DATA_INTERPRETATION_VALIDATION_PROMPT
 from pathlib import Path
 
 
-# Server path for this tool
+# MCP server file path
 SERVER_PATH = (
     Path(__file__).parent.parent.parent
     / 'awslabs'
     / 'cloudwatch_appsignals_mcp_server'
     / 'server.py'
 )
+# MCP server working directory (cloudwatch-appsignals-mcp-server root)
+SERVER_CWD = Path(__file__).parent.parent.parent
 
 # Fixtures directory for investigation task mocks
 FIXTURES_DIR = Path(__file__).parent / 'fixtures'
@@ -135,6 +137,14 @@ class ServiceInvestigationTask(Task):
         return [
             LLMJudgeValidator(validation_prompt_template=DATA_INTERPRETATION_VALIDATION_PROMPT)
         ]
+
+    def get_server_file(self) -> Path:
+        """Return MCP server file path."""
+        return SERVER_PATH
+
+    def get_server_root_directory(self) -> Path:
+        """Return MCP server root directory."""
+        return SERVER_CWD
 
 
 # Task definitions demonstrating range of complexity

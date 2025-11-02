@@ -49,21 +49,13 @@ class EvalRunner:
         results = await runner.run_all(bedrock_client, verbose=True)
     """
 
-    def __init__(self, tasks: List[Task], server_path: str):
+    def __init__(self, tasks: List[Task]):
         """Initialize evaluation runner.
 
         Args:
             tasks: List of Task instances to evaluate
-            server_path: Path to MCP server.py file (required)
-
-        Raises:
-            ValueError: If server_path is not provided
         """
-        if not server_path:
-            raise ValueError('server_path is required')
-
         self.tasks = tasks
-        self.server_path = server_path
 
         # Initialize helper classes (Dependency Injection)
         # These could be passed in as parameters for even better testability,
@@ -132,12 +124,17 @@ class EvalRunner:
         Returns:
             Result dictionary with validation and metrics
         """
-        # Get mock config from task
+        # Get server configuration from task
+        server_file = str(task.get_server_file())
+        server_root_dir = str(task.get_server_root_directory())
         mock_config = task.get_mocks()
 
         # Connect to MCP server with optional mocks
         async with connect_to_mcp_server(
-            self.server_path, verbose=verbose, mock_config=mock_config
+            server_file=server_file,
+            server_root_dir=server_root_dir,
+            verbose=verbose,
+            mock_config=mock_config,
         ) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()

@@ -274,6 +274,36 @@ class Task(ABC):
         """
         return None
 
+    @abstractmethod
+    def get_server_file(self) -> Path:
+        """Return the path to the MCP server file.
+
+        Returns:
+            Path to server.py file
+
+        Example:
+            def get_server_file(self):
+                return Path(__file__).parent.parent.parent / 'awslabs' / 'cloudwatch_appsignals_mcp_server' / 'server.py'
+        """
+        pass
+
+    @abstractmethod
+    def get_server_root_directory(self) -> Path:
+        """Return the root directory of the MCP server.
+
+        This is the directory where the server should run from (where its imports work).
+
+        Returns:
+            Path to server root directory
+
+        Example:
+            def get_server_root_directory(self):
+                # For server at: cloudwatch-appsignals-mcp-server/awslabs/cloudwatch_appsignals_mcp_server/server.py
+                # Return: cloudwatch-appsignals-mcp-server/ directory
+                return Path(__file__).parent.parent.parent
+        """
+        pass
+
     def cleanup(self, context: Dict[str, Any]) -> None:
         """Clean up after task execution.
 

@@ -30,7 +30,8 @@ from typing import Any, Dict, List, Optional
 
 @contextlib.asynccontextmanager
 async def connect_to_mcp_server(
-    server_path: str,
+    server_file: str,
+    server_root_dir: str,
     verbose: bool = False,
     mock_config: Optional[Dict[str, Any]] = None,
 ):
@@ -40,7 +41,8 @@ async def connect_to_mcp_server(
     to external dependencies (boto3, etc.) in the server subprocess.
 
     Args:
-        server_path: Path to MCP server.py file (e.g., '../../src/server.py')
+        server_file: Path to MCP server.py file
+        server_root_dir: Root directory where the server should run (where its imports work)
         verbose: Enable verbose logging from server
         mock_config: Optional mock configuration dictionary
 
@@ -48,37 +50,34 @@ async def connect_to_mcp_server(
         Context manager from stdio_client for MCP connection
 
     Example:
-        # Without mocks
-        async with connect_to_mcp_server('../../src/server.py') as (read, write):
+        async with connect_to_mcp_server(
+            server_file='/path/to/cloudwatch-appsignals-mcp-server/awslabs/cloudwatch_appsignals_mcp_server/server.py',
+            server_root_dir='/path/to/cloudwatch-appsignals-mcp-server',
+        ) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
 
         # With mocks
-        mocks = {
-            'boto3': {
-                'cloudwatch': {
-                    'GetMetricData': {'MetricDataResults': [...]}
-                }
-            }
-        }
-        async with connect_to_mcp_server('../../src/server.py', mock_config=mocks) as (read, write):
+        async with connect_to_mcp_server(
+            server_file='/path/to/server.py',
+            server_root_dir='/path/to/server/root',
+            mock_config={'boto3': {...}}
+        ) as (read, write):
             ...
     """
-    if not server_path:
-        raise ValueError('server_path is required')
+    if not server_file:
+        raise ValueError('server_file is required')
+    if not server_root_dir:
+        raise ValueError('server_root_dir is required')
 
-    # Resolve server path to absolute
-    server_file = Path(server_path).resolve()
-    if not server_file.exists():
-        raise FileNotFoundError(f'MCP server not found: {server_path}')
+    # Resolve paths to absolute
+    server_file_path = Path(server_file).resolve()
+    if not server_file_path.exists():
+        raise FileNotFoundError(f'MCP server not found: {server_file}')
 
-    # Determine working directory for the server
-    # For server.py with relative imports, we need to run from the correct directory
-    # E.g., /path/to/awslabs/cloudwatch_appsignals_mcp_server/server.py
-    #       -> cwd: /path/to (parent of awslabs)
-    server_dir = server_file.parent
-    namespace_dir = server_dir.parent
-    working_dir = namespace_dir.parent
+    server_root_dir_path = Path(server_root_dir).resolve()
+    if not server_root_dir_path.exists():
+        raise FileNotFoundError(f'Server root directory not found: {server_root_dir}')
 
     env = os.environ.copy()
     if not verbose:
@@ -100,25 +99,20 @@ async def connect_to_mcp_server(
             # Set environment variable for wrapper to find mocks
             env['MCP_EVAL_MOCK_FILE'] = mock_file_path
 
-        # Use wrapper to start server (handles both mocked and non-mocked cases)
-        # Run wrapper as a module so relative imports work
-        # cwd must be where 'evals' package can be imported from
-        from evals import MCP_PROJECT_ROOT
-
-        mcp_server_root = MCP_PROJECT_ROOT / 'src' / 'cloudwatch-appsignals-mcp-server'
-
-        # Use sys.executable to ensure we use the same Python interpreter (with venv)
+        # Start server via wrapper (which handles mocking setup)
+        # Wrapper runs from current directory (inherits from parent process where 'import evals' works)
+        # Wrapper internally changes to server_root_dir before running the server
         server_params = StdioServerParameters(
             command=sys.executable,
             args=[
                 '-m',
                 'evals.core.mock_server_wrapper',
-                str(server_file),
+                str(server_file_path),
                 '--server-cwd',
-                str(working_dir),
+                str(server_root_dir_path),
             ],
             env=env,
-            cwd=str(mcp_server_root),
+            # No cwd specified - inherits from parent process
         )
 
         # Yield the stdio_client context manager
