@@ -14,13 +14,16 @@
 
 """Generic evaluation script for MCP tools.
 
-Auto-discovers and runs all tasks defined in tasks/ directory.
+Auto-discovers and runs all tasks defined in *_tasks.py files.
 
 Usage:
-    python evals/eval.py
-    python evals/eval.py -v
-    python evals/eval.py --task ec2_python_flask
-    python evals/eval.py --no-cleanup
+    python evals/eval.py                                    # Run all tasks
+    python evals/eval.py --list                             # List all available tasks
+    python evals/eval.py --task investigation_tasks         # Run all investigation tasks
+    python evals/eval.py --task-id petclinic_scheduling_rca # Run specific task
+    python evals/eval.py --task investigation_tasks --task-id basic_service_health  # Combine filters
+    python evals/eval.py -v                                 # Verbose output
+    python evals/eval.py --no-cleanup                       # Skip cleanup after eval
 """
 
 import argparse
@@ -39,14 +42,15 @@ from typing import Any, Dict, List
 logger.remove()
 
 
-def discover_tasks() -> tuple[List[Any], Path]:
+def discover_tasks() -> tuple[List[Any], Dict[str, List[Any]], Path]:
     """Auto-discover all tasks from *_tasks.py files in evals/ directory.
 
     Returns:
-        Tuple of (all_tasks, server_path)
+        Tuple of (all_tasks, tasks_by_module, server_path)
     """
     evals_dir = Path(__file__).parent
     all_tasks = []
+    tasks_by_module = {}
     server_path = None
 
     # Find all *_tasks.py files in evals/ directory
@@ -63,6 +67,7 @@ def discover_tasks() -> tuple[List[Any], Path]:
             if hasattr(module, 'TASKS'):
                 tasks = module.TASKS
                 all_tasks.extend(tasks)
+                tasks_by_module[module_name] = tasks
                 logger.debug(f'Loaded {len(tasks)} tasks from {module_name}')
 
             # Get server path if defined (first one wins)
@@ -83,7 +88,7 @@ def discover_tasks() -> tuple[List[Any], Path]:
         )
         logger.debug(f'Using default server path: {server_path}')
 
-    return all_tasks, server_path
+    return all_tasks, tasks_by_module, server_path
 
 
 def report_task_results(task: Any, result: Dict[str, Any]) -> None:
@@ -141,7 +146,14 @@ async def main():
     parser.add_argument(
         '--verbose', '-v', action='store_true', help='Enable verbose/debug logging'
     )
-    parser.add_argument('--task', help='Run specific task by ID (default: run all)')
+    parser.add_argument(
+        '--task',
+        help='Run all tasks from specific task file (e.g., investigation_tasks, enablement_tasks)',
+    )
+    parser.add_argument(
+        '--task-id', help='Run specific task by ID (e.g., petclinic_scheduling_rca)'
+    )
+    parser.add_argument('--list', action='store_true', help='List all available tasks and exit')
     parser.add_argument(
         '--no-cleanup',
         action='store_true',
@@ -158,21 +170,43 @@ async def main():
     logger.info('Starting MCP tool evaluation\n')
 
     # Auto-discover tasks
-    all_tasks, server_path = discover_tasks()
+    all_tasks, tasks_by_module, server_path = discover_tasks()
 
     if not all_tasks:
-        logger.error('No tasks found in tasks/ directory')
+        logger.error('No tasks found in *_tasks.py files')
         sys.exit(1)
 
-    # Filter by task ID if specified
+    # Handle --list flag
+    if args.list:
+        logger.info('Available task modules and tasks:\n')
+        for module_name, module_tasks in tasks_by_module.items():
+            logger.info(f'{module_name}:')
+            for task in module_tasks:
+                logger.info(f'  - {task.id}')
+            logger.info('')
+        sys.exit(0)
+
+    # Filter by task module if specified
     if args.task:
-        tasks = [t for t in all_tasks if t.id == args.task]
-        if not tasks:
-            logger.error(f"Task '{args.task}' not found")
-            logger.info(f'Available tasks: {", ".join(t.id for t in all_tasks)}')
+        if args.task not in tasks_by_module:
+            logger.error(f"Task module '{args.task}' not found")
+            logger.info(f'Available modules: {", ".join(tasks_by_module.keys())}')
             sys.exit(1)
+        tasks = tasks_by_module[args.task]
     else:
         tasks = all_tasks
+
+    # Filter by task ID if specified
+    if args.task_id:
+        filtered_tasks = [t for t in tasks if t.id == args.task_id]
+        if not filtered_tasks:
+            logger.error(f"Task ID '{args.task_id}' not found")
+            if args.task:
+                logger.info(f'Available tasks in {args.task}: {", ".join(t.id for t in tasks)}')
+            else:
+                logger.info(f'Available task IDs: {", ".join(t.id for t in all_tasks)}')
+            sys.exit(1)
+        tasks = filtered_tasks
 
     logger.info(f'Loaded {len(tasks)} task(s)')
     for task in tasks:
