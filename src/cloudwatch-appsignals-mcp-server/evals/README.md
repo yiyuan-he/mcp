@@ -1,413 +1,151 @@
-# MCP Tool Evaluation Framework
+# MCP Evaluation Framework
 
-Generic evaluation framework for testing AI agents using Model Context Protocol (MCP) tools. Provides reusable components for metrics tracking, agent orchestration, and validation.
+A framework for evaluating MCP tool performance using multi-turn agent interactions with LLM-as-a-judge validation.
+
+## What It Does
+
+Tests MCP tools by running Claude as an agent through multi-turn conversations, capturing tool calls and outputs, and validating results against defined rubrics using LLM judges.
+
+## Prerequisites
+
+- Python 3.10+
+- AWS credentials configured (for Bedrock access)
+- Your MCP server installed and accessible
 
 ## Quick Start
 
-### Running Existing Evals
-
 ```bash
-# Run enablement evaluation (all tasks)
-python evals/eval_enablement.py
+# List available tasks
+python evals/eval.py --list
 
-# Run with verbose logging
-python evals/eval_enablement.py -v
+# Run all tasks
+python evals/eval.py
 
-# Run specific task without cleanup
-python evals/eval_enablement.py --task ec2_python_flask --no-cleanup
+# Run specific task module
+python evals/eval.py --task investigation_tasks
+
+# Run specific task by ID
+python evals/eval.py --task-id basic_service_health
+
+# Verbose output
+python evals/eval.py -v
 ```
 
-### CLI Options
-
-| Option | Description |
-|--------|-------------|
-| `-v, --verbose` | Enable debug logging |
-| `--task TASK_ID` | Run specific task by ID (default: all) |
-| `--no-cleanup` | Skip cleanup after evaluation (for inspecting changes) |
-
----
-
-## Framework Architecture
-
-The framework separates **tool-agnostic** components (reusable) from **tool-specific** logic:
+## Example Output
 
 ```
-evals/
-├── framework/                    # Generic (reusable for any MCP tool)
-│   ├── metrics.py               # MetricsTracker (hit rate, success rate)
-│   ├── mcp_client.py            # MCP connection utilities
-│   ├── file_tools.py            # Generic file operations
-│   ├── agent.py                 # Multi-turn agent loop
-│   └── validation.py            # LLM-as-judge validation
-│
-├── eval_enablement.py           # Enablement tool eval (example)
-└── tasks/
-    └── enablement_tasks.json    # Enablement task configs
+Running task: basic_service_health
+✓ Prompt 1/1 passed
+  Validation: LLMJudgeValidator
+    ✓ Identifies service health status clearly
+    ✓ Calls appropriate audit tools
+  Metrics:
+    - Duration: 12.3s
+    - Tool calls: 3
+    - Hit rate: 100% (all expected tools called)
+
+Task Result: PASS
 ```
 
-### Generic Framework Components
+## Adding a New Task
 
-**MetricsTracker** - Tracks tool-agnostic metrics:
-- Hit rate: % of expected tools called
-- Success rate: % of successful tool calls
-- Task duration, file operation counts
-
-**Agent Loop** - Multi-turn conversation orchestration:
-- Sends prompt to LLM
-- Handles tool calls (MCP + file operations)
-- Configurable max turns (default: 20)
-
-**LLM-as-Judge Validation** - Evaluates results against rubric:
-- Takes validation criteria list
-- Optional git diff for code changes
-- Optional build results
-- Returns PASS/FAIL per criterion
-
-**MCP Client** - Connection utilities:
-- Connect to any MCP server via stdio
-- Convert MCP tools to Bedrock format
-
----
-
-## Adding Evals for New MCP Tools
-
-### Step 1: Create Task Configuration
-
-Create `evals/tasks/your_tool_tasks.json`:
-
-```json
-[
-  {
-    "id": "task_identifier",
-    "description": "Human-readable task description",
-    "expected_tools": ["your_mcp_tool"],
-    "validation_rubric": [
-      "Criterion 1: Expected outcome",
-      "Criterion 2: Another requirement"
-    ]
-  }
-]
-```
-
-**Core Fields:**
-- `id` - Unique task identifier
-- `description` - What the task tests
-- `expected_tools` - MCP tools agent should call (for hit rate metric)
-- `validation_rubric` - Validation criteria (evaluated by LLM)
-
-**Optional Tool-Specific Fields:**
-Add any custom fields your tool needs for prompt construction (e.g., `platform`, `language`, `region`, etc.)
-
-### Step 2: Create Eval Script
-
-Create `evals/eval_your_tool.py`:
+Create a task file (or add to existing `*_tasks.py`):
 
 ```python
-"""Your MCP Tool Evaluation Script."""
+# evals/my_tasks.py
+from pathlib import Path
+from framework import Task
 
-import argparse
-import asyncio
-import boto3
-import json
-import sys
-from loguru import logger
+class MyCustomTask(Task):
+    def __init__(self):
+        super().__init__(
+            id='my_custom_task',
+            expected_tools=['tool_name'],  # MCP tools you expect to be called
+            max_turns=15  # Maximum conversation turns
+        )
+
+    def get_prompt(self, context):
+        """Return the prompt(s) to give the agent"""
+        return ["Analyze the health of my payment service"]
+
+    @property
+    def rubric(self):
+        """Return validation criteria"""
+        return [
+            "Identifies key service metrics",
+            "Provides actionable insights",
+            "Calls relevant monitoring tools"
+        ]
+
+# Export your tasks
+TASKS = [MyCustomTask()]
+
+# Specify the path to your MCP server
+SERVER_PATH = Path(__file__).parent.parent / 'path' / 'to' / 'your' / 'server.py'
+```
+
+Then run: `python evals/eval.py --task-id my_custom_task`
+
+See `investigation_tasks.py` and `enablement_tasks.py` for more examples.
+
+## Mocking AWS APIs
+
+To make tests deterministic, you can mock AWS API responses by adding a `get_mocks()` method to your task.
+
+### Setup Fixtures Directory
+
+First, define a fixtures directory at the top of your task file:
+
+```python
+# evals/my_tasks.py
 from pathlib import Path
 
-from framework import (
-    MetricsTracker,
-    connect_to_mcp_server,
-    run_agent_loop,
-    validate_with_llm,
-)
-from mcp import ClientSession
-
-logger.remove()
-
-
-async def run_task(bedrock_client, session, task, mcp_tools, args):
-    """Run a single evaluation task."""
-    logger.info(f'Running: {task["id"]}...')
-
-    # 1. Construct tool-specific prompt from task metadata
-    prompt = f"""Your task prompt using task fields:
-{task['description']}
-{task.get('custom_field', '')}
-"""
-
-    # 2. Set project root (adjust for your tool)
-    project_root = Path.cwd()
-
-    # 3. Run agent loop
-    metrics_tracker = MetricsTracker()
-
-    try:
-        await run_agent_loop(
-            bedrock_client=bedrock_client,
-            session=session,
-            prompt=prompt,
-            project_root=project_root,
-            mcp_tools=mcp_tools,
-            metrics_tracker=metrics_tracker,
-        )
-
-        # 4. Run validation
-        validation = await validate_with_llm(
-            bedrock_client=bedrock_client,
-            validation_rubric=task['validation_rubric'],
-            git_diff="",  # Empty for read-only tools
-        )
-
-        # 5. Report metrics
-        metrics = metrics_tracker.get_metrics(
-            expected_tools=task.get('expected_tools', [])
-        )
-
-        logger.info('\n' + '=' * 60)
-        logger.info(f'EVALUATION COMPLETE: {task["id"]}')
-        logger.info('=' * 60)
-        logger.info(f'Duration: {metrics["task_duration"]:.2f}s')
-        logger.info(f'Hit Rate: {metrics.get("hit_rate", 0):.1%}')
-        logger.info(f'Success Rate: {metrics["success_rate"]:.1%}')
-
-        if validation.get('error'):
-            logger.info('Validation: ❌ ERROR')
-        else:
-            passed = sum(1 for r in validation['criteria_results'] if r['status'] == 'PASS')
-            total = len(validation['criteria_results'])
-            status = '✅ PASS' if validation['overall_pass'] else '❌ FAIL'
-            logger.info(f'Validation: {status} ({passed}/{total} criteria met)')
-
-        logger.info('=' * 60 + '\n')
-
-    except Exception as e:
-        logger.error(f'Evaluation failed: {e}')
-
-
-async def main():
-    """Entry point."""
-    parser = argparse.ArgumentParser(description='Evaluate your MCP tool')
-    parser.add_argument('--verbose', '-v', action='store_true')
-    parser.add_argument('--task', help='Run specific task by ID')
-
-    args = parser.parse_args()
-
-    if args.verbose:
-        logger.add(sys.stderr, level='DEBUG', format='<level>{message}</level>')
-    else:
-        logger.add(sys.stderr, level='INFO', format='<level>{message}</level>')
-
-    # Initialize Bedrock
-    bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
-
-    # Load tasks
-    tasks_file = Path(__file__).parent / 'tasks' / 'your_tool_tasks.json'
-    with open(tasks_file) as f:
-        all_tasks = json.load(f)
-
-    if args.task:
-        all_tasks = [t for t in all_tasks if t['id'] == args.task]
-
-    # Connect to MCP server
-    async with connect_to_mcp_server(
-        server_module='awslabs.your_mcp_server.server',
-        verbose=args.verbose
-    ) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            tools = await session.list_tools()
-
-            for task in all_tasks:
-                await run_task(bedrock_client, session, task, tools.tools, args)
-
-
-if __name__ == '__main__':
-    asyncio.run(main())
+FIXTURES_DIR = Path(__file__).parent / 'fixtures' / 'my_tasks'
 ```
 
-### Example: Read-Only Tool
+Then create your fixture files in `evals/fixtures/my_tasks/`.
 
-For tools like `list_monitored_services` that only retrieve data:
+### Add Mocking to Task
 
-**Task config:**
-```json
-{
-  "id": "list_services_basic",
-  "description": "List all monitored services in us-east-1",
-  "region": "us-east-1",
-  "expected_tools": ["list_monitored_services"],
-  "validation_rubric": [
-    "Tool was called successfully",
-    "Response contains service list",
-    "Response format is valid"
-  ]
-}
+```python
+class MyCustomTask(Task):
+    # ... other methods ...
+
+    def get_mocks(self):
+        return {
+            'boto3': {
+                'cloudwatch': {
+                    # Inline response data
+                    'GetMetricData': {
+                        'MetricDataResults': [
+                            {
+                                'Id': 'latency',
+                                'Values': [120.5, 135.2, 98.3],
+                                'Timestamps': ['2024-01-01T00:00:00Z', ...]
+                            }
+                        ]
+                    },
+                    # Or reference a fixture file
+                    'DescribeAlarms': str(FIXTURES_DIR / 'my_alarms.json')
+                },
+                'application-signals': {
+                    'list_audit_findings': str(FIXTURES_DIR / 'healthy_service.json')
+                }
+            }
+        }
 ```
 
-**Key points:**
-- No git cleanup needed
-- Validation checks response content, not code changes
-- Simple rubric focusing on API response
+**Mock structure:**
+- First level: library name (`'boto3'`)
+- Second level: service name (`'cloudwatch'`, `'application-signals'`, etc.)
+- Third level: operation name → response data (dict or path to JSON fixture)
 
-### Example: Code-Modifying Tool
-
-For tools like `get_enablement_guide` that modify infrastructure:
-
-**Task config:**
-```json
-{
-  "id": "enable_signals_ec2",
-  "description": "Enable Application Signals on EC2",
-  "platform": "ec2",
-  "language": "python",
-  "iac_directory": "infrastructure/ec2/cdk",
-  "app_directory": "sample-apps/python/flask",
-  "expected_tools": ["get_enablement_guide"],
-  "modifies_code": true,
-  "build_config": {
-    "command": "npm run build",
-    "working_dir": "infrastructure/ec2/cdk",
-    "install_command": "npm install"
-  },
-  "validation_rubric": [
-    "IAM: CloudWatchAgentServerPolicy attached",
-    "CloudWatch Agent: Installed and configured",
-    "Build: IaC compiles successfully"
-  ]
-}
-```
-
-**Key points:**
-- `modifies_code: true` indicates code changes expected
-- `build_config` for compilation validation
-- Tool-specific cleanup logic (see enablement example)
-- Validation checks git diff
-
----
-
-## Enablement Tool Example
-
-The `eval_enablement.py` demonstrates a complete code-modifying tool evaluation:
-
-### How It Works
-
-1. **Agent Loop**: AI calls `get_enablement_guide`, reads instructions, modifies IaC/app files
-2. **Build Validation**: Runs `npm run build` to verify IaC compiles
-3. **LLM-as-Judge**: Evaluates git diff against 14-point rubric
-4. **Cleanup**: Resets git state in IaC and app directories (enablement-specific)
-
-### Task Configuration
-
-```json
-{
-  "id": "ec2_python_flask",
-  "platform": "ec2",
-  "language": "python",
-  "framework": "flask",
-  "iac_directory": "infrastructure/ec2/cdk",
-  "app_directory": "sample-apps/python/flask",
-  "expected_tools": ["get_enablement_guide"],
-  "modifies_code": true,
-  "build_config": {
-    "command": "npm run build",
-    "working_dir": "infrastructure/ec2/cdk",
-    "install_command": "npm install"
-  },
-  "validation_rubric": [
-    "IAM: CloudWatchAgentServerPolicy is attached to EC2 instance role",
-    "Prerequisites: System dependencies installed (wget, docker, python3-pip)",
-    "CloudWatch Agent: Downloaded, installed, and configured with application_signals",
-    "ADOT: aws-opentelemetry-distro installed via pip3 in UserData",
-    "OTel Config: Basic exporters set (OTEL_METRICS_EXPORTER=none, etc.)",
-    "Build: IaC compiles successfully (npm run build passes)",
-    "Code Integrity: Only IaC/Dockerfile modified, application code unchanged"
-  ]
-}
-```
-
-### Git Cleanup (Enablement-Specific)
-
-The enablement eval includes a `cleanup_enablement_changes()` function that:
-- Resets changes in `iac_directory` and `app_directory`
-- Runs `git checkout HEAD` and `git clean -fd` on those paths
-- Skipped if `--no-cleanup` flag is set
-
-**Note:** Git cleanup is NOT part of the generic framework - implement it in your tool-specific eval if needed.
-
----
-
-## Validation Rubric Best Practices
-
-**Be specific:**
-```json
-✅ "IAM: CloudWatchAgentServerPolicy attached to instance role"
-❌ "IAM configured correctly"
-```
-
-**Use category prefixes:**
-```json
-"IAM: ...",
-"OTel Config: ...",
-"Build: ...",
-"Response Format: ..."
-```
-
-**Handle conditionals explicitly:**
-```json
-"Dockerfile (if Docker): Uses opentelemetry-instrument wrapper"
-```
-
-**Include build validation:**
-```json
-"Build: IaC compiles successfully (npm run build passes)"
-```
-
----
-
-## Metrics Output
-
-All evals report:
-
-```
-============================================================
-EVALUATION COMPLETE: ec2_python_flask
-============================================================
-Duration: 45.32s
-Hit Rate: 100.0%                    # Expected tools called
-Success Rate: 95.0%                 # Successful tool invocations
-File Operations: 12                 # read/write/list count
-Validation: ✅ PASS (14/14 criteria met)
-============================================================
-```
-
----
+See `fixtures/investigation/` for example fixture files.
 
 ## Troubleshooting
 
-**MCP connection fails:**
-- Verify `server_module` path in `connect_to_mcp_server()`
-- Check MCP server is installed: `python -m awslabs.your_server.server`
-- Use `--verbose` to see connection logs
+**Server not found:** Ensure `SERVER_PATH` in your task file points to your MCP server.
 
-**Build validation fails (code-modifying tools):**
-- Verify syntax with local build command
-- Check `build_config.working_dir` path is correct
-- Ensure dependencies installed
+**AWS credentials not configured:** Run `aws configure` to set up Bedrock access.
 
-**Validation inconsistent:**
-- Review rubric criteria (be more specific)
-- Use `--no-cleanup` to inspect `git diff`
-- Add `-v` for debug logging
-
-**Agent doesn't call expected tools:**
-- Check prompt clarity (does it explain when to use the tool?)
-- Review hit_rate metric in output
-- Look at `missing_expected_tools` in verbose logs
-
----
-
-## Framework Design Principles
-
-1. **Generic by default**: Framework components work for any MCP tool
-2. **Extend for specifics**: Tool-specific logic lives in eval scripts, not framework
-3. **Composable**: Pick what you need (metrics, agent loop, validation)
-4. **No magic**: Explicit task configuration, no hidden assumptions
+**Task hangs:** Check the `max_turns` setting - the agent may need more turns to complete the task.
