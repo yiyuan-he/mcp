@@ -111,7 +111,7 @@ class EvalRunner:
         task: Task,
         bedrock_client: Any,
         verbose: bool,
-        mcp_repo_root: Path,
+        working_directory: Path,
     ) -> Dict[str, Any]:
         """Run a single task.
 
@@ -127,7 +127,7 @@ class EvalRunner:
             task: Task instance
             bedrock_client: Boto3 Bedrock Runtime client
             verbose: Enable verbose logging
-            mcp_repo_root: MCP repository root directory
+            working_directory: Working directory for this task
 
         Returns:
             Result dictionary with validation and metrics
@@ -147,7 +147,7 @@ class EvalRunner:
                 logger.debug(f'Connected to MCP server with {len(tools_response.tools)} tools')
 
                 # Create context for task
-                context = self._create_context(mcp_repo_root, bedrock_client)
+                context = self._create_context(working_directory, bedrock_client)
 
                 # Get prompts from task
                 prompts = task.get_prompts(context)
@@ -172,18 +172,18 @@ class EvalRunner:
                     task_id=task.id, prompt_results=prompt_results
                 )
 
-    def _create_context(self, mcp_repo_root: Path, bedrock_client: Any) -> Dict[str, Any]:
+    def _create_context(self, working_directory: Path, bedrock_client: Any) -> Dict[str, Any]:
         """Create context dictionary for task execution.
 
         Args:
-            mcp_repo_root: MCP repository root directory
+            working_directory: Working directory for this task
             bedrock_client: Boto3 Bedrock Runtime client
 
         Returns:
             Context dictionary passed to tasks, captors, and validators
         """
         return {
-            'mcp_repo_root': mcp_repo_root,
+            'working_directory': working_directory,
             'bedrock_client': bedrock_client,
         }
 

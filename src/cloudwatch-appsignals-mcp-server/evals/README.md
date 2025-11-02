@@ -16,19 +16,19 @@ Tests MCP tools by running Claude as an agent through multi-turn conversations, 
 
 ```bash
 # List available tasks
-python evals/eval.py --list
+python -m evals applicationsignals --list
 
 # Run all tasks
-python evals/eval.py
+python -m evals applicationsignals
 
 # Run specific task module
-python evals/eval.py --task investigation_tasks
+python -m evals applicationsignals --task investigation_tasks
 
 # Run specific task by ID
-python evals/eval.py --task-id basic_service_health
+python -m evals applicationsignals --task-id basic_service_health
 
 # Verbose output
-python evals/eval.py -v
+python -m evals applicationsignals -v
 ```
 
 ## Example Output
@@ -49,12 +49,12 @@ Task Result: PASS
 
 ## Adding a New Task
 
-Create a task file (or add to existing `*_tasks.py`):
+Create a task directory under `evals/` named after your MCP server (e.g., `evals/filesystem/`, `evals/slack/`) and add a task file:
 
 ```python
-# evals/my_tasks.py
+# evals/<your-server-name>/investigation_tasks.py
 from pathlib import Path
-from framework import Task
+from evals.core import Task
 
 class MyCustomTask(Task):
     def __init__(self):
@@ -81,12 +81,22 @@ class MyCustomTask(Task):
 TASKS = [MyCustomTask()]
 
 # Specify the path to your MCP server
-SERVER_PATH = Path(__file__).parent.parent / 'path' / 'to' / 'your' / 'server.py'
+SERVER_PATH = Path(__file__).parent.parent.parent / 'path' / 'to' / 'your' / 'server.py'
 ```
 
-Then run: `python evals/eval.py --task-id my_custom_task`
+Then run:
+```bash
+# Run specific task
+python -m evals <your-server-name> --task-id my_custom_task
 
-See `investigation_tasks.py` and `enablement_tasks.py` for more examples.
+# Run all tasks in a module
+python -m evals <your-server-name> --task investigation_tasks
+
+# Run all tasks
+python -m evals <your-server-name>
+```
+
+See `evals/applicationsignals/investigation_tasks.py` and `enablement_tasks.py` for more examples.
 
 ## Mocking AWS APIs
 
@@ -97,13 +107,13 @@ To make tests deterministic, you can mock AWS API responses by adding a `get_moc
 First, define a fixtures directory at the top of your task file:
 
 ```python
-# evals/my_tasks.py
+# evals/mytool/my_tasks.py
 from pathlib import Path
 
-FIXTURES_DIR = Path(__file__).parent / 'fixtures' / 'my_tasks'
+FIXTURES_DIR = Path(__file__).parent / 'fixtures'
 ```
 
-Then create your fixture files in `evals/fixtures/my_tasks/`.
+Then create your fixture files in `evals/mytool/fixtures/`.
 
 ### Add Mocking to Task
 
@@ -140,7 +150,7 @@ class MyCustomTask(Task):
 - Second level: service name (`'cloudwatch'`, `'application-signals'`, etc.)
 - Third level: operation name → response data (dict or path to JSON fixture)
 
-See `fixtures/investigation/` for example fixture files.
+See `evals/applicationsignals/fixtures/investigation/` for example fixture files.
 
 ## Troubleshooting
 

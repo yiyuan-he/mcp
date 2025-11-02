@@ -24,14 +24,17 @@ These tasks range from simple health checks to complex multi-auditor investigati
 showcasing the eval framework's ability to handle read-only investigative workflows.
 """
 
-from framework import FinalResponseCaptor, LLMJudgeValidator, Task, ToolCallsCaptor
-from framework.constants import DATA_INTERPRETATION_VALIDATION_PROMPT
+from evals.core import FinalResponseCaptor, LLMJudgeValidator, Task, ToolCallsCaptor
+from evals.core.constants import DATA_INTERPRETATION_VALIDATION_PROMPT
 from pathlib import Path
 
 
 # Server path for this tool
 SERVER_PATH = (
-    Path(__file__).parent.parent / 'awslabs' / 'cloudwatch_appsignals_mcp_server' / 'server.py'
+    Path(__file__).parent.parent.parent
+    / 'awslabs'
+    / 'cloudwatch_appsignals_mcp_server'
+    / 'server.py'
 )
 
 # Fixtures directory for investigation task mocks

@@ -19,7 +19,7 @@ to enable Application Signals monitoring on various platforms.
 """
 
 import subprocess
-from framework import (
+from evals.core import (
     BuildValidator,
     GitDiffCaptor,
     LLMJudgeValidator,
@@ -30,9 +30,18 @@ from pathlib import Path
 from typing import Optional
 
 
+# TEMPORARY: MCP project root calculation
+# This is nested deeply because eval framework currently lives in:
+# mcp/src/cloudwatch-appsignals-mcp-server/evals/applicationsignals/
+# Once eval framework moves to a higher-level directory, this can be simplified
+MCP_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
+
 # Server path for this tool
 SERVER_PATH = (
-    Path(__file__).parent.parent / 'awslabs' / 'cloudwatch_appsignals_mcp_server' / 'server.py'
+    Path(__file__).parent.parent.parent
+    / 'awslabs'
+    / 'cloudwatch_appsignals_mcp_server'
+    / 'server.py'
 )
 
 
@@ -66,16 +75,16 @@ class EnablementTask(Task):
 
         Args:
             id: Task identifier
-            git_paths: List of paths (relative to mcp_repo_root) for git diff/cleanup
-            iac_dir: IaC directory path (relative to mcp_repo_root)
-            app_dir: Application directory path (relative to mcp_repo_root)
+            git_paths: List of paths (relative to working_directory) for git diff/cleanup
+            iac_dir: IaC directory path (relative to working_directory)
+            app_dir: Application directory path (relative to working_directory)
             language: Programming language (e.g., 'python', 'java')
             framework: Framework (e.g., 'flask', 'spring-boot')
             platform: Platform (e.g., 'ec2', 'ecs', 'eks')
             validation_rubric: List of validation criteria
             expected_tools: Expected MCP tools to be called
             build_command: Optional build command (e.g., 'npm install && npm run build')
-            build_working_dir: Optional build working directory (relative to mcp_repo_root)
+            build_working_dir: Optional build working directory (relative to working_directory)
             modifies_code: Whether task modifies files (for cleanup)
             max_turns: Maximum conversation turns
         """
@@ -92,18 +101,26 @@ class EnablementTask(Task):
         self.build_working_dir = build_working_dir
         self.modifies_code = modifies_code
 
+    def get_working_directory(self):
+        """Return path to Application Signals samples directory.
+
+        Returns:
+            Path to cloudwatch-appsignals-mcp-server samples directory
+        """
+        return MCP_PROJECT_ROOT / 'samples' / 'cloudwatch-appsignals-mcp-server'
+
     def get_prompts(self, context: dict) -> list[str]:
         """Return enablement prompt with absolute paths.
 
         Args:
-            context: Runtime context with 'mcp_repo_root' key
+            context: Runtime context with 'working_directory' key
 
         Returns:
             List with single prompt
         """
-        mcp_repo_root = context['mcp_repo_root']
-        iac_abs_path = mcp_repo_root / self.iac_dir
-        app_abs_path = mcp_repo_root / self.app_dir
+        working_directory = context['working_directory']
+        iac_abs_path = working_directory / self.iac_dir
+        app_abs_path = working_directory / self.app_dir
 
         prompt = f"""Enable Application Signals for my {self.language} {self.framework} on {self.platform}.
 
@@ -134,19 +151,19 @@ My application directory is: {app_abs_path}"""
         """Return validators for this task.
 
         Args:
-            context: Runtime context with 'mcp_repo_root' key
+            context: Runtime context with 'working_directory' key
 
         Returns:
             List of validators (BuildValidator and LLMJudgeValidator)
         """
-        from framework.constants import CODE_MODIFICATION_VALIDATION_PROMPT
+        from evals.core.constants import CODE_MODIFICATION_VALIDATION_PROMPT
 
-        mcp_repo_root = context['mcp_repo_root']
+        working_directory = context['working_directory']
         validators = []
 
         # Add build validator if build config provided
         if self.build_command and self.build_working_dir:
-            build_working_dir = mcp_repo_root / self.build_working_dir
+            build_working_dir = working_directory / self.build_working_dir
 
             validators.append(
                 BuildValidator(
@@ -168,17 +185,17 @@ My application directory is: {app_abs_path}"""
         Resets git state for paths specified in git_paths.
 
         Args:
-            context: Runtime context with 'mcp_repo_root' key
+            context: Runtime context with 'working_directory' key
         """
         if not self.git_paths:
             logger.warning('No git_paths specified to clean')
             return
 
-        mcp_repo_root = context['mcp_repo_root']
+        working_directory = context['working_directory']
 
         try:
             for rel_path in self.git_paths:
-                full_path = str(mcp_repo_root / rel_path)
+                full_path = str(working_directory / rel_path)
                 logger.debug(f'Cleaning path: {full_path}')
                 subprocess.run(
                     ['git', 'checkout', 'HEAD', '--', full_path],
@@ -200,16 +217,16 @@ TASKS = [
     EnablementTask(
         id='ec2_python_flask',
         git_paths=[
-            'samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk',
-            'samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/sample-apps/python/flask',
+            'get-enablement-guide-samples/infrastructure/ec2/cdk',
+            'get-enablement-guide-samples/sample-apps/python/flask',
         ],
-        iac_dir='samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk',
-        app_dir='samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/sample-apps/python/flask',
+        iac_dir='get-enablement-guide-samples/infrastructure/ec2/cdk',
+        app_dir='get-enablement-guide-samples/sample-apps/python/flask',
         language='python',
         framework='flask',
         platform='ec2',
         build_command='npm install && npm run build',
-        build_working_dir='samples/cloudwatch-appsignals-mcp-server/get-enablement-guide-samples/infrastructure/ec2/cdk',
+        build_working_dir='get-enablement-guide-samples/infrastructure/ec2/cdk',
         expected_tools=['get_enablement_guide'],
         modifies_code=True,
         validation_rubric=[

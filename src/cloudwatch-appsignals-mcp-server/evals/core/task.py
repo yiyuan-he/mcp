@@ -20,6 +20,7 @@ and optional mock configurations.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
@@ -31,7 +32,7 @@ class Task(ABC):
     the task prompt(s) and validation criteria.
 
     Context dictionary contains runtime information:
-        - mcp_repo_root: Path to MCP repository root
+        - working_directory: Path to working directory for this task
         - bedrock_client: Boto3 Bedrock client (for validators)
 
     Attributes:
@@ -58,7 +59,7 @@ class Task(ABC):
 
         Args:
             context: Runtime context dictionary with keys:
-                - mcp_repo_root: Path to MCP repository root
+                - working_directory: Path to working directory for this task
                 - bedrock_client: Boto3 Bedrock client
 
         Returns:
@@ -71,8 +72,8 @@ class Task(ABC):
 
             # Complex prompt (uses context for paths)
             def get_prompts(self, context):
-                mcp_repo_root = context['mcp_repo_root']
-                path = mcp_repo_root / self.iac_dir
+                working_dir = context['working_directory']
+                path = working_dir / self.iac_dir
                 return [f"Enable Application Signals at {path}"]
         """
         pass
@@ -118,14 +119,14 @@ class Task(ABC):
 
         Args:
             context: Runtime context dictionary with keys:
-                - mcp_repo_root: Path to MCP repository root
+                - working_directory: Path to working directory for this task
                 - bedrock_client: Boto3 Bedrock client
 
         Returns:
             List of Validator instances
 
         Example:
-            from framework import BuildValidator, LLMJudgeValidator
+            from evals.core import BuildValidator, LLMJudgeValidator
             return [
                 BuildValidator(command="npm run build", working_dir=...),
                 LLMJudgeValidator(validation_prompt_template=...)
@@ -156,6 +157,22 @@ class Task(ABC):
         """
         return None
 
+    def get_working_directory(self) -> Optional[Path]:
+        """Return the working directory for this task.
+
+        Override this method to specify a working directory where the task
+        should operate (e.g., path to samples/ for enablement tasks).
+
+        Returns:
+            Path to working directory, or None to use current directory
+
+        Example:
+            def get_working_directory(self):
+                # Return path to samples directory for enablement tasks
+                return Path(__file__).parent.parent.parent.parent / 'samples'
+        """
+        return None
+
     def cleanup(self, context: Dict[str, Any]) -> None:
         """Clean up after task execution.
 
@@ -163,7 +180,7 @@ class Task(ABC):
 
         Args:
             context: Runtime context dictionary with keys:
-                - mcp_repo_root: Path to MCP repository root
+                - working_directory: Path to working directory
         """
         pass
 

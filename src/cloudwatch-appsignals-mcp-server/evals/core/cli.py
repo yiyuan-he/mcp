@@ -14,16 +14,16 @@
 
 """Generic evaluation script for MCP tools.
 
-Auto-discovers and runs all tasks defined in *_tasks.py files.
+Auto-discovers and runs all tasks defined in *_tasks.py files in the specified directory.
 
 Usage:
-    python evals/eval.py                                    # Run all tasks
-    python evals/eval.py --list                             # List all available tasks
-    python evals/eval.py --task investigation_tasks         # Run all investigation tasks
-    python evals/eval.py --task-id petclinic_scheduling_rca # Run specific task
-    python evals/eval.py --task investigation_tasks --task-id basic_service_health  # Combine filters
-    python evals/eval.py -v                                 # Verbose output
-    python evals/eval.py --no-cleanup                       # Skip cleanup after eval
+    python evals/framework/eval.py applicationsignals                                    # Run all tasks
+    python evals/framework/eval.py applicationsignals --list                             # List all available tasks
+    python evals/framework/eval.py applicationsignals --task investigation_tasks         # Run all investigation tasks
+    python evals/framework/eval.py applicationsignals --task-id petclinic_scheduling_rca # Run specific task
+    python evals/framework/eval.py applicationsignals --task investigation_tasks --task-id basic_service_health  # Combine filters
+    python evals/framework/eval.py applicationsignals -v                                 # Verbose output
+    python evals/framework/eval.py applicationsignals --no-cleanup                       # Skip cleanup after eval
 """
 
 import argparse
@@ -32,8 +32,8 @@ import boto3
 import importlib
 import sys
 import traceback
-from framework import EvalRunner
-from framework.constants import DEFAULT_AWS_REGION
+from evals.core import EvalRunner
+from evals.core.constants import DEFAULT_AWS_REGION
 from loguru import logger
 from pathlib import Path
 from typing import Any, Dict, List
@@ -42,21 +42,34 @@ from typing import Any, Dict, List
 logger.remove()
 
 
-def discover_tasks() -> tuple[List[Any], Dict[str, List[Any]], Path]:
-    """Auto-discover all tasks from *_tasks.py files in evals/ directory.
+def discover_tasks(task_dir: Path) -> tuple[List[Any], Dict[str, List[Any]], Path]:
+    """Auto-discover all tasks from *_tasks.py files in the specified directory.
+
+    Args:
+        task_dir: Path to directory containing task modules
 
     Returns:
         Tuple of (all_tasks, tasks_by_module, server_path)
     """
-    evals_dir = Path(__file__).parent
     all_tasks = []
     tasks_by_module = {}
     server_path = None
 
-    # Find all *_tasks.py files in evals/ directory
-    task_modules = [f.stem for f in evals_dir.glob('*_tasks.py')]
+    # Add evals directory to Python path so framework imports work in task modules
+    evals_dir = task_dir.parent
+    evals_dir_str = str(evals_dir.absolute())
+    if evals_dir_str not in sys.path:
+        sys.path.insert(0, evals_dir_str)
 
-    logger.debug(f'Discovered task modules: {task_modules}')
+    # Add task directory to Python path so we can import task modules
+    task_dir_str = str(task_dir.absolute())
+    if task_dir_str not in sys.path:
+        sys.path.insert(0, task_dir_str)
+
+    # Find all *_tasks.py files in task directory
+    task_modules = [f.stem for f in task_dir.glob('*_tasks.py')]
+
+    logger.debug(f'Discovered task modules in {task_dir}: {task_modules}')
 
     for module_name in task_modules:
         try:
@@ -77,11 +90,13 @@ def discover_tasks() -> tuple[List[Any], Dict[str, List[Any]], Path]:
 
         except Exception as e:
             logger.warning(f'Failed to load tasks from {module_name}: {e}')
+            if logger.level('DEBUG').no <= logger._core.min_level:
+                traceback.print_exc()
 
     # Default server path if not specified
     if server_path is None:
         server_path = (
-            Path(__file__).parent.parent
+            Path(__file__).parent.parent.parent
             / 'awslabs'
             / 'cloudwatch_appsignals_mcp_server'
             / 'server.py'
@@ -144,6 +159,10 @@ async def main():
     """Entry point for eval script."""
     parser = argparse.ArgumentParser(description='Evaluate MCP tools')
     parser.add_argument(
+        'task_dir',
+        help='Task directory name (relative to evals/, e.g., "applicationsignals")',
+    )
+    parser.add_argument(
         '--verbose', '-v', action='store_true', help='Enable verbose/debug logging'
     )
     parser.add_argument(
@@ -167,10 +186,19 @@ async def main():
     else:
         logger.add(sys.stderr, level='INFO', format='<level>{message}</level>')
 
-    logger.info('Starting MCP tool evaluation\n')
+    # Resolve task directory (relative to evals/, which is parent of framework/)
+    evals_dir = Path(__file__).parent.parent
+    task_dir = evals_dir / args.task_dir
+
+    if not task_dir.exists():
+        logger.error(f'Task directory not found: {task_dir}')
+        logger.error(f'Expected to find it at: {task_dir.absolute()}')
+        sys.exit(1)
+
+    logger.info(f'Starting MCP tool evaluation for {args.task_dir}\n')
 
     # Auto-discover tasks
-    all_tasks, tasks_by_module, server_path = discover_tasks()
+    all_tasks, tasks_by_module, server_path = discover_tasks(task_dir)
 
     if not all_tasks:
         logger.error('No tasks found in *_tasks.py files')
@@ -224,13 +252,6 @@ async def main():
         logger.error('Make sure AWS credentials are configured')
         sys.exit(1)
 
-    # Get MCP repository root (where samples/ directory is)
-    mcp_repo_root = Path(__file__).parent.parent.parent.parent
-    if not (mcp_repo_root / 'samples').exists():
-        logger.error(f'Could not find samples/ directory at {mcp_repo_root}')
-        sys.exit(1)
-
-    logger.debug(f'MCP repository root: {mcp_repo_root}')
     logger.debug(f'MCP server path: {server_path}')
 
     # Create runner and execute tasks
@@ -240,7 +261,14 @@ async def main():
         # Execute each task
         results = []
         for task in tasks:
-            result = await runner.run_task(task, bedrock_client, args.verbose, mcp_repo_root)
+            # Get working directory from task (or use current directory if not specified)
+            working_directory = task.get_working_directory()
+            if working_directory is None:
+                working_directory = Path.cwd()
+
+            logger.debug(f'Working directory for task {task.id}: {working_directory}')
+
+            result = await runner.run_task(task, bedrock_client, args.verbose, working_directory)
             results.append(result)
 
         # Report results and cleanup
@@ -249,7 +277,8 @@ async def main():
 
             # Call task cleanup
             if not args.no_cleanup:
-                context = {'mcp_repo_root': mcp_repo_root}
+                working_directory = task.get_working_directory() or Path.cwd()
+                context = {'working_directory': working_directory}
                 task.cleanup(context)
 
         # Give subprocess time to clean up before event loop closes (Python < 3.11)

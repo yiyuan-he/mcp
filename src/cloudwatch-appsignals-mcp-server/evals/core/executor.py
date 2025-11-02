@@ -67,7 +67,7 @@ class PromptExecutor:
             task: The Task instance being evaluated
             session: MCP ClientSession for tool calls
             tools_response: Response from session.list_tools()
-            context: Context dictionary with mcp_repo_root, bedrock_client
+            context: Context dictionary with working_directory, bedrock_client
 
         Returns:
             Dictionary with prompt execution results:
@@ -84,7 +84,7 @@ class PromptExecutor:
 
         # Extract dependencies from context
         bedrock_client = context['bedrock_client']
-        mcp_repo_root = context['mcp_repo_root']
+        working_directory = context['working_directory']
 
         # Step 1: Run agent loop
         metrics_tracker = MetricsTracker()
@@ -92,7 +92,7 @@ class PromptExecutor:
             bedrock_client=bedrock_client,
             session=session,
             prompt=prompt,
-            project_root=mcp_repo_root,
+            project_root=working_directory,
             mcp_tools=tools_response.tools,
             metrics_tracker=metrics_tracker,
             max_turns=task.max_turns,
@@ -100,7 +100,7 @@ class PromptExecutor:
 
         # Step 2: Execute captors
         captured_data = await self._execute_captors(
-            task, context, messages, metrics_tracker, mcp_repo_root, prompt_index, prompt
+            task, context, messages, metrics_tracker, working_directory, prompt_index, prompt
         )
 
         # Step 3: Execute validators
@@ -129,7 +129,7 @@ class PromptExecutor:
         context: Dict[str, Any],
         messages: list,
         metrics_tracker: MetricsTracker,
-        mcp_repo_root: Path,
+        working_directory: Path,
         prompt_index: int,
         prompt: str,
     ) -> Dict[str, Any]:
@@ -140,7 +140,7 @@ class PromptExecutor:
             context: Context dictionary
             messages: Conversation messages from agent loop
             metrics_tracker: Metrics tracker instance
-            mcp_repo_root: MCP repository root
+            working_directory: Working directory for this task
             prompt_index: Index of current prompt
             prompt: Prompt text
 
@@ -151,7 +151,7 @@ class PromptExecutor:
         captors = task.get_captors(context)
 
         for captor in captors:
-            captor_output = captor.capture(messages, metrics_tracker, mcp_repo_root)
+            captor_output = captor.capture(messages, metrics_tracker, working_directory)
             captured_data.update(captor_output)
 
         return captured_data
