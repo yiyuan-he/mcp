@@ -113,14 +113,14 @@ def report_task_results(task: Any, result: Dict[str, Any]) -> None:
         task: Task instance
         result: Result dictionary from EvalRunner
     """
-    logger.info('\n' + '=' * 60)
-    logger.info(f'EVALUATION COMPLETE: {task.id}')
-    logger.info('=' * 60)
+    print('\n' + '=' * 60)
+    print(f'EVALUATION COMPLETE: {task.id}')
+    print('=' * 60)
 
     if result.get('error'):
-        logger.info('Status: ❌ ERROR')
+        print('Status: ❌ ERROR')
         logger.error(result['error'])
-        logger.info('=' * 60 + '\n')
+        print('=' * 60 + '\n')
         return
 
     # Report results for each prompt
@@ -128,19 +128,19 @@ def report_task_results(task: Any, result: Dict[str, Any]) -> None:
         prompt_idx = prompt_result['prompt_index']
         metrics = prompt_result['metrics']
 
-        logger.info(f'Prompt {prompt_idx + 1}/{result["num_prompts"]}:')
-        logger.info(f'  Duration: {metrics["task_duration"]:.2f}s')
-        logger.info(f'  Turns: {metrics["turn_count"]}')
-        logger.info(f'  Tool Calls: {metrics["tool_call_count"]} ({metrics["unique_tools_count"]} unique)')
-        logger.info(f'  Hit Rate: {metrics.get("hit_rate", 0):.1%}')
-        logger.info(f'  Success Rate: {metrics["success_rate"]:.1%}')
-        logger.info(f'  File Operations: {metrics["file_operation_count"]}')
+        print(f'Prompt {prompt_idx + 1}/{result["num_prompts"]}:')
+        print(f'  Duration: {metrics["task_duration"]:.2f}s')
+        print(f'  Turns: {metrics["turn_count"]}')
+        print(f'  Tool Calls: {metrics["tool_call_count"]} ({metrics["unique_tools_count"]} unique)')
+        print(f'  Hit Rate: {metrics.get("hit_rate", 0):.1%}')
+        print(f'  Success Rate: {metrics["success_rate"]:.1%}')
+        print(f'  File Operations: {metrics["file_operation_count"]}')
 
         # Report per-tool breakdown
         if metrics.get('tool_breakdown'):
-            logger.info('  Tool Breakdown:')
+            print('  Tool Breakdown:')
             for tool_name, stats in sorted(metrics['tool_breakdown'].items()):
-                logger.info(
+                print(
                     f'    - {tool_name}: {stats["count"]} calls '
                     f'({stats["success"]} success, {stats["failed"]} failed)'
                 )
@@ -149,26 +149,26 @@ def report_task_results(task: Any, result: Dict[str, Any]) -> None:
         for validation_result in prompt_result['validation_results']:
             validator_name = validation_result.get('validator_name', 'Unknown')
             if validation_result.get('error'):
-                logger.info(f'  Validation ({validator_name}): ❌ ERROR')
+                print(f'  Validation ({validator_name}): ❌ ERROR')
                 logger.error(f'  {validation_result["error"]}')
             else:
                 criteria_results = validation_result.get('criteria_results', [])
                 passed = sum(1 for r in criteria_results if r['status'] == 'PASS')
                 total = len(criteria_results)
                 status = '✅ PASS' if validation_result['overall_pass'] else '❌ FAIL'
-                logger.info(
+                print(
                     f'  Validation ({validator_name}): {status} ({passed}/{total} criteria met)'
                 )
 
                 # Display each criterion with its status
                 for criterion_result in criteria_results:
                     status_text = criterion_result['status']
-                    logger.info(f'    [{status_text}] {criterion_result["criterion"]}')
+                    print(f'    [{status_text}] {criterion_result["criterion"]}')
 
     # Overall task status
     status = '✅ PASS' if result['success'] else '❌ FAIL'
-    logger.info(f'\nOverall Task Status: {status}')
-    logger.info('=' * 60 + '\n')
+    print(f'\nOverall Task Status: {status}')
+    print('=' * 60 + '\n')
 
 
 async def main():
@@ -200,15 +200,8 @@ async def main():
     if args.verbose:
         logger.add(sys.stderr, level='DEBUG', format='<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{message}</level>')
     else:
-        # Without -v: Show WARNING+ from all modules, but also INFO from cli.py (for eval summary)
-        def eval_filter(record):
-            if record['level'].no >= logger.level('WARNING').no:
-                return True
-            if record['level'].name == 'INFO' and 'cli.py' in record['file'].path:
-                return True
-            return False
-
-        logger.add(sys.stderr, level='DEBUG', format='<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{message}</level>', filter=eval_filter)
+        # Without -v: Show only WARNING+ from all modules (user-facing output uses print())
+        logger.add(sys.stderr, level='WARNING', format='<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{message}</level>')
 
     # Resolve task directory (relative to evals/, which is parent of framework/)
     evals_dir = Path(__file__).parent.parent
@@ -219,7 +212,7 @@ async def main():
         logger.error(f'Expected to find it at: {task_dir.absolute()}')
         sys.exit(1)
 
-    logger.info(f'Starting MCP tool evaluation for {args.task_dir}\n')
+    print(f'Starting MCP tool evaluation for {args.task_dir}\n')
 
     # Auto-discover tasks
     all_tasks, tasks_by_module, server_path = discover_tasks(task_dir)
@@ -230,19 +223,19 @@ async def main():
 
     # Handle --list flag
     if args.list:
-        logger.info('Available task modules and tasks:\n')
+        print('Available task modules and tasks:\n')
         for module_name, module_tasks in tasks_by_module.items():
-            logger.info(f'{module_name}:')
+            print(f'{module_name}:')
             for task in module_tasks:
-                logger.info(f'  - {task.id}')
-            logger.info('')
+                print(f'  - {task.id}')
+            print('')
         sys.exit(0)
 
     # Filter by task module if specified
     if args.task:
         if args.task not in tasks_by_module:
             logger.error(f"Task module '{args.task}' not found")
-            logger.info(f'Available modules: {", ".join(tasks_by_module.keys())}')
+            print(f'Available modules: {", ".join(tasks_by_module.keys())}')
             sys.exit(1)
         tasks = tasks_by_module[args.task]
     else:
@@ -254,16 +247,16 @@ async def main():
         if not filtered_tasks:
             logger.error(f"Task ID '{args.task_id}' not found")
             if args.task:
-                logger.info(f'Available tasks in {args.task}: {", ".join(t.id for t in tasks)}')
+                print(f'Available tasks in {args.task}: {", ".join(t.id for t in tasks)}')
             else:
-                logger.info(f'Available task IDs: {", ".join(t.id for t in all_tasks)}')
+                print(f'Available task IDs: {", ".join(t.id for t in all_tasks)}')
             sys.exit(1)
         tasks = filtered_tasks
 
-    logger.info(f'Loaded {len(tasks)} task(s)')
+    print(f'Loaded {len(tasks)} task(s)')
     for task in tasks:
-        logger.info(f'  - {task.id}')
-    logger.info('')
+        print(f'  - {task.id}')
+    print('')
 
     # Initialize Bedrock client
     try:
