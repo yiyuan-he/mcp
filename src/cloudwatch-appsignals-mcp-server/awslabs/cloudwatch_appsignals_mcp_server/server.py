@@ -1338,7 +1338,6 @@ mcp.tool()(list_slos)
 mcp.tool()(search_transaction_spans)
 mcp.tool()(query_sampled_traces)
 mcp.tool()(list_slis)
-mcp.tool()(analyze_canary_failures)
 
 
 def main():
