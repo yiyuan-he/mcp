@@ -167,6 +167,7 @@ async def run_agent_loop(
     if turn >= max_turns:
         logger.warning(f'Reached max turns ({max_turns})')
 
+    metrics_tracker.record_turn_count(turn)
     metrics_tracker.end_task()
 
     return messages

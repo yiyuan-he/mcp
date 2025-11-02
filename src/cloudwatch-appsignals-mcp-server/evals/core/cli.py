@@ -130,9 +130,20 @@ def report_task_results(task: Any, result: Dict[str, Any]) -> None:
 
         logger.info(f'Prompt {prompt_idx + 1}/{result["num_prompts"]}:')
         logger.info(f'  Duration: {metrics["task_duration"]:.2f}s')
+        logger.info(f'  Turns: {metrics["turn_count"]}')
+        logger.info(f'  Tool Calls: {metrics["tool_call_count"]} ({metrics["unique_tools_count"]} unique)')
         logger.info(f'  Hit Rate: {metrics.get("hit_rate", 0):.1%}')
         logger.info(f'  Success Rate: {metrics["success_rate"]:.1%}')
         logger.info(f'  File Operations: {metrics["file_operation_count"]}')
+
+        # Report per-tool breakdown
+        if metrics.get('tool_breakdown'):
+            logger.info('  Tool Breakdown:')
+            for tool_name, stats in sorted(metrics['tool_breakdown'].items()):
+                logger.info(
+                    f'    - {tool_name}: {stats["count"]} calls '
+                    f'({stats["success"]} success, {stats["failed"]} failed)'
+                )
 
         # Report validation results
         for validation_result in prompt_result['validation_results']:
@@ -148,6 +159,11 @@ def report_task_results(task: Any, result: Dict[str, Any]) -> None:
                 logger.info(
                     f'  Validation ({validator_name}): {status} ({passed}/{total} criteria met)'
                 )
+
+                # Display each criterion with its status
+                for criterion_result in criteria_results:
+                    status_text = criterion_result['status']
+                    logger.info(f'    [{status_text}] {criterion_result["criterion"]}')
 
     # Overall task status
     status = '✅ PASS' if result['success'] else '❌ FAIL'

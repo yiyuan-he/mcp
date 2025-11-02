@@ -128,7 +128,6 @@ class LLMJudgeValidator(Validator):
             logger.debug(f'LLM validation took {elapsed:.2f}s')
 
             response_text = response['output']['message']['content'][0]['text']
-            logger.debug(f'LLM response:\n{response_text}')
 
             # Parse response
             criteria_results = self._parse_llm_response(response_text, rubric)
