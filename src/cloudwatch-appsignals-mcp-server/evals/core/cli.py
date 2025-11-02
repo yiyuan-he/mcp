@@ -198,7 +198,7 @@ async def main():
     args = parser.parse_args()
 
     if args.verbose:
-        logger.add(sys.stderr, level='DEBUG', format='<level>{message}</level>')
+        logger.add(sys.stderr, level='DEBUG', format='<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{message}</level>')
     else:
         # Without -v: Show WARNING+ from all modules, but also INFO from cli.py (for eval summary)
         def eval_filter(record):
@@ -208,7 +208,7 @@ async def main():
                 return True
             return False
 
-        logger.add(sys.stderr, level='DEBUG', format='<level>{message}</level>', filter=eval_filter)
+        logger.add(sys.stderr, level='DEBUG', format='<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{message}</level>', filter=eval_filter)
 
     # Resolve task directory (relative to evals/, which is parent of framework/)
     evals_dir = Path(__file__).parent.parent
