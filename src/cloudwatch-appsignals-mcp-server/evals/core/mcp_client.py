@@ -17,6 +17,7 @@
 Provides connection and tool conversion utilities for MCP servers.
 """
 
+import contextlib
 import json
 import os
 import sys
@@ -27,7 +28,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
-def connect_to_mcp_server(
+@contextlib.asynccontextmanager
+async def connect_to_mcp_server(
     server_path: str,
     verbose: bool = False,
     mock_config: Optional[Dict[str, Any]] = None,
@@ -42,7 +44,7 @@ def connect_to_mcp_server(
         verbose: Enable verbose logging from server
         mock_config: Optional mock configuration dictionary
 
-    Returns:
+    Yields:
         Context manager from stdio_client for MCP connection
 
     Example:
@@ -70,62 +72,67 @@ def connect_to_mcp_server(
     if not server_file.exists():
         raise FileNotFoundError(f'MCP server not found: {server_path}')
 
-    # Determine module path and working directory
-    # For server.py with relative imports, we need to run as module
+    # Determine working directory for the server
+    # For server.py with relative imports, we need to run from the correct directory
     # E.g., /path/to/awslabs/cloudwatch_appsignals_mcp_server/server.py
-    #       -> module: awslabs.cloudwatch_appsignals_mcp_server.server
     #       -> cwd: /path/to (parent of awslabs)
-
-    # Find the parent directory containing the package
     server_dir = server_file.parent
-    package_name = server_dir.name  # e.g., cloudwatch_appsignals_mcp_server
-    namespace_dir = server_dir.parent  # e.g., awslabs
-    namespace_name = namespace_dir.name  # e.g., awslabs
-    working_dir = namespace_dir.parent  # e.g., /path/to
-
-    # Construct module path
-    module_path = f'{namespace_name}.{package_name}.server'
+    namespace_dir = server_dir.parent
+    working_dir = namespace_dir.parent
 
     env = os.environ.copy()
     if not verbose:
         env['LOGURU_LEVEL'] = 'ERROR'
         env['MCP_CLOUDWATCH_APPSIGNALS_LOG_LEVEL'] = 'WARNING'
 
-    # Always use wrapper for consistent logging configuration
-    # If mocks provided, write to temp file
-    if mock_config:
-        # Create temp file for mock config
-        # Note: We don't delete this file immediately because the subprocess needs it.
-        # It will be cleaned up by the OS temp directory cleanup.
-        mock_fd, mock_file_path = tempfile.mkstemp(suffix='.json', prefix='mcp_mocks_')
-        with os.fdopen(mock_fd, 'w') as f:
-            json.dump(mock_config, f)
+    # Track temp file for cleanup
+    mock_file_path = None
 
-        # Set environment variable for wrapper to find mocks
-        env['MCP_EVAL_MOCK_FILE'] = mock_file_path
+    try:
+        # Always use wrapper for consistent logging configuration
+        # If mocks provided, write to temp file
+        if mock_config:
+            # Create temp file for mock config
+            mock_fd, mock_file_path = tempfile.mkstemp(suffix='.json', prefix='mcp_mocks_')
+            with os.fdopen(mock_fd, 'w') as f:
+                json.dump(mock_config, f)
 
-    # Use wrapper to start server (handles both mocked and non-mocked cases)
-    # Run wrapper as a module so relative imports work
-    # cwd must be where 'evals' package can be imported from
-    from evals import MCP_PROJECT_ROOT
+            # Set environment variable for wrapper to find mocks
+            env['MCP_EVAL_MOCK_FILE'] = mock_file_path
 
-    mcp_server_root = MCP_PROJECT_ROOT / 'src' / 'cloudwatch-appsignals-mcp-server'
+        # Use wrapper to start server (handles both mocked and non-mocked cases)
+        # Run wrapper as a module so relative imports work
+        # cwd must be where 'evals' package can be imported from
+        from evals import MCP_PROJECT_ROOT
 
-    # Use sys.executable to ensure we use the same Python interpreter (with venv)
-    server_params = StdioServerParameters(
-        command=sys.executable,
-        args=[
-            '-m',
-            'evals.core.mock_server_wrapper',
-            str(server_file),
-            '--server-cwd',
-            str(working_dir),
-        ],
-        env=env,
-        cwd=str(mcp_server_root),
-    )
+        mcp_server_root = MCP_PROJECT_ROOT / 'src' / 'cloudwatch-appsignals-mcp-server'
 
-    return stdio_client(server_params)
+        # Use sys.executable to ensure we use the same Python interpreter (with venv)
+        server_params = StdioServerParameters(
+            command=sys.executable,
+            args=[
+                '-m',
+                'evals.core.mock_server_wrapper',
+                str(server_file),
+                '--server-cwd',
+                str(working_dir),
+            ],
+            env=env,
+            cwd=str(mcp_server_root),
+        )
+
+        # Yield the stdio_client context manager
+        async with stdio_client(server_params) as client:
+            yield client
+
+    finally:
+        # Clean up temp file after server subprocess has finished
+        if mock_file_path and os.path.exists(mock_file_path):
+            try:
+                os.unlink(mock_file_path)
+            except OSError:
+                # Best effort cleanup - don't fail if we can't delete
+                pass
 
 
 def convert_mcp_tools_to_bedrock(mcp_tools) -> List[Dict[str, Any]]:
