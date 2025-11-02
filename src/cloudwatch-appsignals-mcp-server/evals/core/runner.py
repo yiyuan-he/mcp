@@ -17,14 +17,12 @@
 EvalRunner coordinates:
 - MCP server connection with optional mocking
 - Task execution orchestration
-- Result aggregation and reporting
+- Result reporting
 
 Heavy lifting delegated to:
 - PromptExecutor: Executes individual prompts with agent loop, captors, validators
-- ResultAggregator: Aggregates results from multiple prompts
 """
 
-from .aggregator import ResultAggregator
 from .executor import PromptExecutor
 from .mcp_client import connect_to_mcp_server
 from .task import Task
@@ -61,7 +59,6 @@ class EvalRunner:
         # These could be passed in as parameters for even better testability,
         # but for now we instantiate them here
         self.prompt_executor = PromptExecutor()
-        self.result_aggregator = ResultAggregator()
 
     async def run_all(
         self,
@@ -109,8 +106,7 @@ class EvalRunner:
 
         This method orchestrates the high-level flow:
         1. Connect to MCP server
-        2. Execute each prompt (delegated to PromptExecutor)
-        3. Aggregate results (delegated to ResultAggregator)
+        2. Execute the prompt (delegated to PromptExecutor)
 
         The actual work is delegated to focused helper classes, making this
         method easy to understand and maintain.
@@ -146,28 +142,22 @@ class EvalRunner:
                 # Create context for task
                 context = self._create_context(working_directory, bedrock_client)
 
-                # Get prompts from task
-                prompts = task.get_prompts(context)
+                # Get prompt from task
+                prompt = task.get_prompt(context)
 
-                # Execute each prompt (delegated to PromptExecutor)
-                prompt_results = []
-                for i, prompt in enumerate(prompts):
-                    logger.debug(f'Running eval for prompt {i + 1}/{len(prompts)}')
-
-                    result = await self.prompt_executor.execute_prompt(
-                        prompt=prompt,
-                        prompt_index=i,
-                        task=task,
-                        session=session,
-                        tools_response=tools_response,
-                        context=context,
-                    )
-                    prompt_results.append(result)
-
-                # Aggregate results across all prompts (delegated to ResultAggregator)
-                return self.result_aggregator.aggregate_task_results(
-                    task_id=task.id, prompt_results=prompt_results
+                # Execute prompt (delegated to PromptExecutor)
+                logger.debug(f'Running eval for task {task.id}')
+                result = await self.prompt_executor.execute_prompt(
+                    prompt=prompt,
+                    task=task,
+                    session=session,
+                    tools_response=tools_response,
+                    context=context,
                 )
+
+                # Add task ID to result
+                result['task_id'] = task.id
+                return result
 
     def _create_context(self, working_directory: Path, bedrock_client: Any) -> Dict[str, Any]:
         """Create context dictionary for task execution.

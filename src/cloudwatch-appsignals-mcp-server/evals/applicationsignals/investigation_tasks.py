@@ -89,16 +89,16 @@ class ServiceInvestigationTask(Task):
         self.prompt_text = prompt
         self.validation_rubric = validation_rubric
 
-    def get_prompts(self, context: dict) -> list[str]:
+    def get_prompt(self, context: dict) -> str:
         """Return the investigation prompt.
 
         Args:
             context: Runtime context (unused)
 
         Returns:
-            List with single investigation prompt
+            Investigation prompt string
         """
-        return [self.prompt_text]
+        return self.prompt_text
 
     @property
     def rubric(self) -> list[str]:

@@ -107,47 +107,42 @@ def report_task_results(task: Any, result: Dict[str, Any]) -> None:
         print('=' * 60 + '\n')
         return
 
-    # Report results for each prompt
-    for prompt_result in result['prompt_results']:
-        prompt_idx = prompt_result['prompt_index']
-        metrics = prompt_result['metrics']
+    # Report metrics
+    metrics = result['metrics']
+    print(f'Duration: {metrics["task_duration"]:.2f}s')
+    print(f'Turns: {metrics["turn_count"]}')
+    print(f'Tool Calls: {metrics["tool_call_count"]} ({metrics["unique_tools_count"]} unique)')
+    print(f'Hit Rate: {metrics.get("hit_rate", 0):.1%}')
+    print(f'Success Rate: {metrics["success_rate"]:.1%}')
+    print(f'File Operations: {metrics["file_operation_count"]}')
 
-        print(f'Prompt {prompt_idx + 1}/{result["num_prompts"]}:')
-        print(f'  Duration: {metrics["task_duration"]:.2f}s')
-        print(f'  Turns: {metrics["turn_count"]}')
-        print(f'  Tool Calls: {metrics["tool_call_count"]} ({metrics["unique_tools_count"]} unique)')
-        print(f'  Hit Rate: {metrics.get("hit_rate", 0):.1%}')
-        print(f'  Success Rate: {metrics["success_rate"]:.1%}')
-        print(f'  File Operations: {metrics["file_operation_count"]}')
+    # Report per-tool breakdown
+    if metrics.get('tool_breakdown'):
+        print('\nTool Breakdown:')
+        for tool_name, stats in sorted(metrics['tool_breakdown'].items()):
+            print(
+                f'  - {tool_name}: {stats["count"]} calls '
+                f'({stats["success"]} success, {stats["failed"]} failed)'
+            )
 
-        # Report per-tool breakdown
-        if metrics.get('tool_breakdown'):
-            print('  Tool Breakdown:')
-            for tool_name, stats in sorted(metrics['tool_breakdown'].items()):
-                print(
-                    f'    - {tool_name}: {stats["count"]} calls '
-                    f'({stats["success"]} success, {stats["failed"]} failed)'
-                )
+    # Report validation results
+    print('\nValidation Results:')
+    for validation_result in result['validation_results']:
+        validator_name = validation_result.get('validator_name', 'Unknown')
+        if validation_result.get('error'):
+            print(f'  {validator_name}: ❌ ERROR')
+            logger.error(f'    {validation_result["error"]}')
+        else:
+            criteria_results = validation_result.get('criteria_results', [])
+            passed = sum(1 for r in criteria_results if r['status'] == 'PASS')
+            total = len(criteria_results)
+            status = '✅ PASS' if validation_result['overall_pass'] else '❌ FAIL'
+            print(f'  {validator_name}: {status} ({passed}/{total} criteria met)')
 
-        # Report validation results
-        for validation_result in prompt_result['validation_results']:
-            validator_name = validation_result.get('validator_name', 'Unknown')
-            if validation_result.get('error'):
-                print(f'  Validation ({validator_name}): ❌ ERROR')
-                logger.error(f'  {validation_result["error"]}')
-            else:
-                criteria_results = validation_result.get('criteria_results', [])
-                passed = sum(1 for r in criteria_results if r['status'] == 'PASS')
-                total = len(criteria_results)
-                status = '✅ PASS' if validation_result['overall_pass'] else '❌ FAIL'
-                print(
-                    f'  Validation ({validator_name}): {status} ({passed}/{total} criteria met)'
-                )
-
-                # Display each criterion with its status
-                for criterion_result in criteria_results:
-                    status_text = criterion_result['status']
-                    print(f'    [{status_text}] {criterion_result["criterion"]}')
+            # Display each criterion with its status
+            for criterion_result in criteria_results:
+                status_text = criterion_result['status']
+                print(f'    [{status_text}] {criterion_result["criterion"]}')
 
     # Overall task status
     status = '✅ PASS' if result['success'] else '❌ FAIL'

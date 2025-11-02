@@ -55,11 +55,8 @@ class Task(ABC):
             self.expected_tools = []
 
     @abstractmethod
-    def get_prompts(self, context: Dict[str, Any]) -> list[str]:
-        """Return task prompt(s) to send to the agent.
-
-        Always returns a list, even for single prompts. Multiple prompts
-        will be sent sequentially to the agent.
+    def get_prompt(self, context: Dict[str, Any]) -> str:
+        """Return task prompt to send to the agent.
 
         Args:
             context: Runtime context dictionary with keys:
@@ -67,18 +64,18 @@ class Task(ABC):
                 - bedrock_client: Boto3 Bedrock client
 
         Returns:
-            List of prompts to send sequentially
+            Prompt string to send to agent
 
         Example:
             # Simple prompt (ignores context)
-            def get_prompts(self, context):
-                return ["List services with high latency"]
+            def get_prompt(self, context):
+                return "List services with high latency"
 
             # Complex prompt (uses context for paths)
-            def get_prompts(self, context):
+            def get_prompt(self, context):
                 working_dir = context['working_directory']
                 path = working_dir / self.iac_dir
-                return [f"Enable Application Signals at {path}"]
+                return f"Enable Application Signals at {path}"
         """
         pass
 

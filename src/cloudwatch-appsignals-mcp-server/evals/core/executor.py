@@ -53,26 +53,23 @@ class PromptExecutor:
     async def execute_prompt(
         self,
         prompt: str,
-        prompt_index: int,
         task: Task,
         session: ClientSession,
         tools_response: Any,
         context: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """Execute a single prompt and gather all results.
+        """Execute a prompt and gather all results.
 
         Args:
             prompt: The prompt text to send to the agent
-            prompt_index: Index of this prompt in the task's prompt list
             task: The Task instance being evaluated
             session: MCP ClientSession for tool calls
             tools_response: Response from session.list_tools()
             context: Context dictionary with working_directory, bedrock_client
 
         Returns:
-            Dictionary with prompt execution results:
+            Dictionary with execution results:
             {
-                'prompt_index': int,
                 'prompt': str,
                 'success': bool,
                 'validation_results': List[Dict],
@@ -80,7 +77,7 @@ class PromptExecutor:
                 'captured_data': Dict
             }
         """
-        logger.debug(f'Running eval for prompt {prompt_index + 1}')
+        logger.debug('Running eval for task')
 
         # Extract dependencies from context
         bedrock_client = context['bedrock_client']
@@ -100,7 +97,7 @@ class PromptExecutor:
 
         # Step 2: Execute captors
         captured_data = await self._execute_captors(
-            task, context, messages, metrics_tracker, working_directory, prompt_index, prompt
+            task, context, messages, metrics_tracker, working_directory, prompt
         )
 
         # Step 3: Execute validators
@@ -111,11 +108,10 @@ class PromptExecutor:
         # Step 4: Calculate metrics
         metrics = metrics_tracker.get_metrics(expected_tools=task.expected_tools)
 
-        # Step 5: Aggregate results for this prompt
+        # Step 5: Determine overall success
         overall_pass = all(v.get('overall_pass', False) for v in validation_results)
 
         return {
-            'prompt_index': prompt_index,
             'prompt': prompt,
             'success': overall_pass,
             'validation_results': validation_results,
@@ -130,7 +126,6 @@ class PromptExecutor:
         messages: list,
         metrics_tracker: MetricsTracker,
         working_directory: Path,
-        prompt_index: int,
         prompt: str,
     ) -> Dict[str, Any]:
         """Execute all captors and gather captured data.
@@ -141,13 +136,12 @@ class PromptExecutor:
             messages: Conversation messages from agent loop
             metrics_tracker: Metrics tracker instance
             working_directory: Working directory for this task
-            prompt_index: Index of current prompt
             prompt: Prompt text
 
         Returns:
             Dictionary with captured data from all captors
         """
-        captured_data = {'prompt_index': prompt_index, 'prompt': prompt}
+        captured_data = {'prompt': prompt}
         captors = task.get_captors(context)
 
         for captor in captors:

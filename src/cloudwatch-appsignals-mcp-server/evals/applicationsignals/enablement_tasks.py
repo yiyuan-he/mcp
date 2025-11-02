@@ -119,25 +119,23 @@ class EnablementTask(Task):
         """Return MCP server root directory."""
         return SERVER_CWD
 
-    def get_prompts(self, context: dict) -> list[str]:
+    def get_prompt(self, context: dict) -> str:
         """Return enablement prompt with absolute paths.
 
         Args:
             context: Runtime context with 'working_directory' key
 
         Returns:
-            List with single prompt
+            Enablement prompt string
         """
         working_directory = context['working_directory']
         iac_abs_path = working_directory / self.iac_dir
         app_abs_path = working_directory / self.app_dir
 
-        prompt = f"""Enable Application Signals for my {self.language} {self.framework} on {self.platform}.
+        return f"""Enable Application Signals for my {self.language} {self.framework} on {self.platform}.
 
 My infrastructure as code directory is: {iac_abs_path}
 My application directory is: {app_abs_path}"""
-
-        return [prompt]
 
     @property
     def rubric(self) -> list[str]:
