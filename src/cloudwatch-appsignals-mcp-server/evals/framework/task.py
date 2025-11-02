@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Optional
 class Task(ABC):
     """Base class for evaluation tasks.
 
-    Subclasses must implement get_prompt() and rubric property to define
+    Subclasses must implement get_prompts() and rubric property to define
     the task prompt(s) and validation criteria.
 
     Context dictionary contains runtime information:
@@ -50,7 +50,7 @@ class Task(ABC):
             self.expected_tools = []
 
     @abstractmethod
-    def get_prompt(self, context: Dict[str, Any]) -> list[str]:
+    def get_prompts(self, context: Dict[str, Any]) -> list[str]:
         """Return task prompt(s) to send to the agent.
 
         Always returns a list, even for single prompts. Multiple prompts
@@ -66,11 +66,11 @@ class Task(ABC):
 
         Example:
             # Simple prompt (ignores context)
-            def get_prompt(self, context):
+            def get_prompts(self, context):
                 return ["List services with high latency"]
 
             # Complex prompt (uses context for paths)
-            def get_prompt(self, context):
+            def get_prompts(self, context):
                 mcp_repo_root = context['mcp_repo_root']
                 path = mcp_repo_root / self.iac_dir
                 return [f"Enable Application Signals at {path}"]

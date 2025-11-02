@@ -150,7 +150,7 @@ class EvalRunner:
                 context = self._create_context(mcp_repo_root, bedrock_client)
 
                 # Get prompts from task
-                prompts = task.get_prompt(context)
+                prompts = task.get_prompts(context)
 
                 # Execute each prompt (delegated to PromptExecutor)
                 prompt_results = []

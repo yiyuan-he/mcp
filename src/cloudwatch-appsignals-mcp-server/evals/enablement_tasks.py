@@ -92,7 +92,7 @@ class EnablementTask(Task):
         self.build_working_dir = build_working_dir
         self.modifies_code = modifies_code
 
-    def get_prompt(self, context: dict) -> list[str]:
+    def get_prompts(self, context: dict) -> list[str]:
         """Return enablement prompt with absolute paths.
 
         Args:

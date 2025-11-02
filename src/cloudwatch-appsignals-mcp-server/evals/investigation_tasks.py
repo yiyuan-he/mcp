@@ -77,7 +77,7 @@ class ServiceInvestigationTask(Task):
         self.validation_rubric = validation_rubric
         self.mock_fixture = mock_fixture
 
-    def get_prompt(self, context: dict) -> list[str]:
+    def get_prompts(self, context: dict) -> list[str]:
         """Return the investigation prompt.
 
         Args:

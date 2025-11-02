@@ -64,7 +64,7 @@ class MyCustomTask(Task):
             max_turns=15  # Maximum conversation turns
         )
 
-    def get_prompt(self, context):
+    def get_prompts(self, context):
         """Return the prompt(s) to give the agent"""
         return ["Analyze the health of my payment service"]
 
