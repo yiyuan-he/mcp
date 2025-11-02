@@ -78,7 +78,9 @@ class MockHandler(ABC):
             if 'request' in value and 'response' in value:
                 # Load response fixture if it's a file path (should be absolute path string)
                 response = value['response']
-                if isinstance(response, str) and (response.endswith('.json') or response.endswith('.txt')):
+                if isinstance(response, str) and (
+                    response.endswith('.json') or response.endswith('.txt')
+                ):
                     fixture_path = Path(response)  # Already absolute
                     if fixture_path.exists():
                         if response.endswith('.json'):
@@ -88,12 +90,9 @@ class MockHandler(ABC):
                             with open(fixture_path, 'r') as f:
                                 response = f.read()
                     else:
-                        raise FileNotFoundError(f"Fixture file not found: {response}")
+                        raise FileNotFoundError(f'Fixture file not found: {response}')
 
-                return {
-                    'request': value['request'],
-                    'response': response
-                }
+                return {'request': value['request'], 'response': response}
 
             # Other dicts pass through unchanged (e.g., inline mock data)
             return value
@@ -108,6 +107,7 @@ class Boto3MockHandler(MockHandler):
     """
 
     def __init__(self):
+        """Initialize Boto3MockHandler with empty state."""
         self.original_client = None
         self.mock_responses: Dict[str, Dict[str, Any]] = {}
         self.fixtures_dir: Optional[Path] = None
@@ -170,16 +170,20 @@ class Boto3MockHandler(MockHandler):
                 # All mocks must be lists of request/response pairs
                 if not isinstance(response_data, list):
                     raise ValueError(
-                        f"Invalid mock configuration for {service_name}.{operation}. "
-                        f"Expected list of request/response pairs, got: {type(response_data)}. "
+                        f'Invalid mock configuration for {service_name}.{operation}. '
+                        f'Expected list of request/response pairs, got: {type(response_data)}. '
                         f"Use format: [{{'request': {{}}, 'response': 'fixture.json'}}]"
                     )
 
-                if not response_data or not isinstance(response_data[0], dict) or 'request' not in response_data[0]:
+                if (
+                    not response_data
+                    or not isinstance(response_data[0], dict)
+                    or 'request' not in response_data[0]
+                ):
                     raise ValueError(
-                        f"Invalid mock configuration for {service_name}.{operation}. "
+                        f'Invalid mock configuration for {service_name}.{operation}. '
                         f"Lists must contain dicts with 'request' and 'response' keys. "
-                        f"Got: {response_data}"
+                        f'Got: {response_data}'
                     )
 
                 # Create parameter-aware mock with request/response pairs
@@ -202,6 +206,7 @@ class Boto3MockHandler(MockHandler):
         Returns:
             MagicMock that returns responses based on parameter matching
         """
+
         def mock_implementation(**kwargs):
             # Try to find a matching response
             for matcher in matchers:
@@ -218,8 +223,8 @@ class Boto3MockHandler(MockHandler):
 
             # No match found - raise helpful error
             raise ValueError(
-                f"No mock response found for {operation} with parameters: {kwargs}\n"
-                f"Available request patterns: {[m.get('request') for m in matchers]}"
+                f'No mock response found for {operation} with parameters: {kwargs}\n'
+                f'Available request patterns: {[m.get("request") for m in matchers]}'
             )
 
         return MagicMock(side_effect=mock_implementation)
@@ -232,6 +237,7 @@ class MockHandlerRegistry:
     """
 
     def __init__(self):
+        """Initialize MockHandlerRegistry and register built-in handlers."""
         self._handlers: Dict[str, MockHandler] = {}
         self._register_builtin_handlers()
 

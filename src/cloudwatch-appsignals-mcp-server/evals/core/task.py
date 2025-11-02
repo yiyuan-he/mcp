@@ -19,7 +19,7 @@ and optional mock configurations.
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -176,7 +176,7 @@ class Task(ABC):
             if self._has_fixture_references(self.mocks):
                 raise ValueError(
                     f"Task '{self.id}' has fixture file references in mocks but no fixtures_dir specified. "
-                    f"Either provide fixtures_dir parameter or use absolute paths/inline mock data."
+                    f'Either provide fixtures_dir parameter or use absolute paths/inline mock data.'
                 )
             # No fixture files, just return as-is (inline mocks or absolute paths)
             return self.mocks
@@ -226,13 +226,17 @@ class Task(ABC):
                 resolved[key] = self._resolve_fixture_paths(value, fixtures_dir)
             elif isinstance(value, list):
                 # Lists should contain request/response pairs
-                resolved[key] = [self._resolve_request_response_pair(item, fixtures_dir) for item in value]
+                resolved[key] = [
+                    self._resolve_request_response_pair(item, fixtures_dir) for item in value
+                ]
             else:
                 # Pass through other values
                 resolved[key] = value
         return resolved
 
-    def _resolve_request_response_pair(self, pair: Dict[str, Any], fixtures_dir: Path) -> Dict[str, Any]:
+    def _resolve_request_response_pair(
+        self, pair: Dict[str, Any], fixtures_dir: Path
+    ) -> Dict[str, Any]:
         """Resolve a request/response pair.
 
         Args:
@@ -252,10 +256,7 @@ class Task(ABC):
         if isinstance(response, str) and (response.endswith('.json') or response.endswith('.txt')):
             response = str(fixtures_dir / response)
 
-        return {
-            'request': pair['request'],
-            'response': response
-        }
+        return {'request': pair['request'], 'response': response}
 
     def get_working_directory(self) -> Optional[Path]:
         """Return the working directory for this task.

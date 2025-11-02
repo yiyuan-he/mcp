@@ -1,4 +1,4 @@
-"""Entry point for running evals as a module: python -m evals"""
+"""Entry point for running evals as a module: python -m evals."""
 
 import asyncio
 import sys

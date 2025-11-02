@@ -19,9 +19,6 @@ to enable Application Signals monitoring on various platforms.
 """
 
 import subprocess
-from pathlib import Path
-from typing import Optional
-
 from evals import MCP_PROJECT_ROOT
 from evals.core import (
     BuildValidator,
@@ -30,6 +27,9 @@ from evals.core import (
     Task,
 )
 from loguru import logger
+from pathlib import Path
+from typing import Optional
+
 
 # Server path for this tool
 SERVER_PATH = (

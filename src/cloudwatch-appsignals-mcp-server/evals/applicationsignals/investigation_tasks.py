@@ -82,7 +82,7 @@ class ServiceInvestigationTask(Task):
             max_turns=max_turns,
             expected_tools=expected_tools,
             mocks=mocks,
-            fixtures_dir=fixtures_dir
+            fixtures_dir=fixtures_dir,
         )
         self.prompt_text = prompt
         self.validation_rubric = validation_rubric
@@ -157,15 +157,15 @@ TASKS = [
                     'list_services': [
                         {
                             'request': {},  # No parameters needed
-                            'response': 'investigation/list_services/checkout_service.json'
+                            'response': 'investigation/list_services/checkout_service.json',
                         }
                     ],
                     'list_audit_findings': [
                         {
                             'request': {},  # audit_services may pass various filters, but we accept any
-                            'response': 'investigation/list_audit_findings/healthy_service.json'
+                            'response': 'investigation/list_audit_findings/healthy_service.json',
                         }
-                    ]
+                    ],
                 }
             }
         },
@@ -189,15 +189,15 @@ TASKS = [
                     'list_services': [
                         {
                             'request': {},
-                            'response': 'investigation/list_services/checkout_service.json'
+                            'response': 'investigation/list_services/checkout_service.json',
                         }
                     ],
                     'list_audit_findings': [
                         {
                             'request': {},
-                            'response': 'investigation/list_audit_findings/slo_breach.json'
+                            'response': 'investigation/list_audit_findings/slo_breach.json',
                         }
-                    ]
+                    ],
                 }
             }
         },
@@ -225,15 +225,15 @@ Users are reporting that they cannot book appointments. Can you investigate what
                     'list_services': [
                         {
                             'request': {},
-                            'response': 'investigation/list_services/checkout_service.json'
+                            'response': 'investigation/list_services/checkout_service.json',
                         }
                     ],
                     'list_audit_findings': [
                         {
                             'request': {},
-                            'response': 'investigation/list_audit_findings/petclinic_scheduling.json'
+                            'response': 'investigation/list_audit_findings/petclinic_scheduling.json',
                         }
-                    ]
+                    ],
                 }
             }
         },
@@ -260,25 +260,25 @@ and provide detailed information about their configuration and current status?""
                     'list_services': [
                         {
                             'request': {},
-                            'response': 'investigation/list_services/checkout_service.json'
+                            'response': 'investigation/list_services/checkout_service.json',
                         }
                     ],
                     'list_audit_findings': [
                         {
                             'request': {},
-                            'response': 'investigation/list_audit_findings/slo_breach_investigation.json'
+                            'response': 'investigation/list_audit_findings/slo_breach_investigation.json',
                         }
                     ],
                     'get_service_level_objective': [
                         {
                             'request': {'Id': 'CheckoutService-Availability'},
-                            'response': 'investigation/get_service_level_objective/checkout_availability_slo.json'
+                            'response': 'investigation/get_service_level_objective/checkout_availability_slo.json',
                         },
                         {
                             'request': {'Id': 'CheckoutService-Latency'},
-                            'response': 'investigation/get_service_level_objective/checkout_latency_slo.json'
-                        }
-                    ]
+                            'response': 'investigation/get_service_level_objective/checkout_latency_slo.json',
+                        },
+                    ],
                 }
             }
         },

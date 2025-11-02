@@ -106,6 +106,7 @@ def connect_to_mcp_server(
         # Run wrapper as a module so relative imports work
         # cwd must be where 'evals' package can be imported from
         from evals import MCP_PROJECT_ROOT
+
         mcp_server_root = MCP_PROJECT_ROOT / 'src' / 'cloudwatch-appsignals-mcp-server'
 
         # Use sys.executable to ensure we use the same Python interpreter (with venv)
