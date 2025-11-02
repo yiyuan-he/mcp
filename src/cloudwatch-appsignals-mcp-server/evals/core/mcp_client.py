@@ -104,21 +104,22 @@ def connect_to_mcp_server(
 
         # Use wrapper to start server with mocks
         # Run wrapper as a module so relative imports work
-        # cwd must be where 'framework' package is (evals directory)
-        evals_dir = Path(__file__).parent.parent
+        # cwd must be where 'evals' package can be imported from
+        from evals import MCP_PROJECT_ROOT
+        mcp_server_root = MCP_PROJECT_ROOT / 'src' / 'cloudwatch-appsignals-mcp-server'
 
         # Use sys.executable to ensure we use the same Python interpreter (with venv)
         server_params = StdioServerParameters(
             command=sys.executable,
             args=[
                 '-m',
-                'framework.mock_server_wrapper',
+                'evals.core.mock_server_wrapper',
                 str(server_file),
                 '--server-cwd',
                 str(working_dir),
             ],
             env=env,
-            cwd=str(evals_dir),
+            cwd=str(mcp_server_root),
         )
 
         return stdio_client(server_params)

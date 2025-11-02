@@ -19,6 +19,10 @@ to enable Application Signals monitoring on various platforms.
 """
 
 import subprocess
+from pathlib import Path
+from typing import Optional
+
+from evals import MCP_PROJECT_ROOT
 from evals.core import (
     BuildValidator,
     GitDiffCaptor,
@@ -26,15 +30,6 @@ from evals.core import (
     Task,
 )
 from loguru import logger
-from pathlib import Path
-from typing import Optional
-
-
-# TEMPORARY: MCP project root calculation
-# This is nested deeply because eval framework currently lives in:
-# mcp/src/cloudwatch-appsignals-mcp-server/evals/
-# Once eval framework moves to a higher-level directory, this can be simplified
-MCP_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
 
 # Server path for this tool
 SERVER_PATH = (
