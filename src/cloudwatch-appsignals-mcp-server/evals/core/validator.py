@@ -180,28 +180,71 @@ class LLMJudgeValidator(Validator):
         return '\n\n'.join(sections)
 
     def _parse_llm_response(self, response_text: str, rubric: List[str]) -> List[Dict[str, Any]]:
-        """Parse LLM response into structured criteria results."""
+        """Parse LLM response into structured criteria results.
+
+        Expected format:
+        1. [PASS] Reasoning for first criterion
+        2. [FAIL] Reasoning for second criterion
+        ...
+
+        Args:
+            response_text: Raw LLM response text
+            rubric: List of criteria to validate against
+
+        Returns:
+            List of criterion results with status and reasoning
+        """
         criteria_results = []
+        lines = response_text.strip().split('\n')
 
-        for line in response_text.strip().split('\n'):
-            if not line.strip():
+        for line in lines:
+            line = line.strip()
+            if not line:
                 continue
 
-            if '[PASS]' in line.upper():
+            # Try to extract status marker (case-insensitive)
+            line_upper = line.upper()
+            if '[PASS]' in line_upper:
                 status = 'PASS'
-                reasoning = line.split('[PASS]', 1)[1].strip() if '[PASS]' in line else line
-            elif '[FAIL]' in line.upper():
+                # Extract reasoning after [PASS] marker (case-insensitive split)
+                # Find the position of [PASS] and extract everything after it
+                pass_idx = line_upper.find('[PASS]')
+                reasoning = line[pass_idx + 6:].strip()
+            elif '[FAIL]' in line_upper:
                 status = 'FAIL'
-                reasoning = line.split('[FAIL]', 1)[1].strip() if '[FAIL]' in line else line
+                # Extract reasoning after [FAIL] marker (case-insensitive split)
+                fail_idx = line_upper.find('[FAIL]')
+                reasoning = line[fail_idx + 6:].strip()
             else:
+                # Line doesn't have a status marker, skip it
                 continue
 
+            # Only add if we haven't exceeded the rubric length
             if len(criteria_results) < len(rubric):
                 criteria_results.append(
                     {
                         'criterion': rubric[len(criteria_results)],
                         'status': status,
-                        'reasoning': reasoning,
+                        'reasoning': reasoning if reasoning else line,
+                    }
+                )
+
+        # Validate we got the expected number of results
+        if len(criteria_results) != len(rubric):
+            logger.warning(
+                f'LLM validation format mismatch: expected {len(rubric)} criteria, '
+                f'parsed {len(criteria_results)} from response. '
+                f'Some criteria may not have been evaluated.'
+            )
+            logger.debug(f'Raw LLM response:\n{response_text}')
+
+            # Fill in missing criteria with FAIL status
+            while len(criteria_results) < len(rubric):
+                criteria_results.append(
+                    {
+                        'criterion': rubric[len(criteria_results)],
+                        'status': 'FAIL',
+                        'reasoning': 'LLM did not provide evaluation for this criterion',
                     }
                 )
 
