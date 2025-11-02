@@ -16,15 +16,17 @@
 
 EvalRunner coordinates:
 - MCP server connection with optional mocking
-- Agent loop execution
-- Captor execution to extract outputs
-- Validator execution to evaluate against rubric
-- Results reporting
+- Task execution orchestration
+- Result aggregation and reporting
+
+Heavy lifting delegated to:
+- PromptExecutor: Executes individual prompts with agent loop, captors, validators
+- ResultAggregator: Aggregates results from multiple prompts
 """
 
-from .agent import run_agent_loop
+from .aggregator import ResultAggregator
+from .executor import PromptExecutor
 from .mcp_client import connect_to_mcp_server
-from .metrics import MetricsTracker
 from .task import Task
 from loguru import logger
 from mcp import ClientSession
@@ -62,6 +64,12 @@ class EvalRunner:
 
         self.tasks = tasks
         self.server_path = server_path
+
+        # Initialize helper classes (Dependency Injection)
+        # These could be passed in as parameters for even better testability,
+        # but for now we instantiate them here
+        self.prompt_executor = PromptExecutor()
+        self.result_aggregator = ResultAggregator()
 
     async def run_all(
         self,
@@ -107,6 +115,14 @@ class EvalRunner:
     ) -> Dict[str, Any]:
         """Run a single task.
 
+        This method orchestrates the high-level flow:
+        1. Connect to MCP server
+        2. Execute each prompt (delegated to PromptExecutor)
+        3. Aggregate results (delegated to ResultAggregator)
+
+        The actual work is delegated to focused helper classes, making this
+        method easy to understand and maintain.
+
         Args:
             task: Task instance
             bedrock_client: Boto3 Bedrock Runtime client
@@ -131,76 +147,45 @@ class EvalRunner:
                 logger.debug(f'Connected to MCP server with {len(tools_response.tools)} tools')
 
                 # Create context for task
-                context = {
-                    'mcp_repo_root': mcp_repo_root,
-                    'bedrock_client': bedrock_client,
-                }
+                context = self._create_context(mcp_repo_root, bedrock_client)
 
                 # Get prompts from task
                 prompts = task.get_prompt(context)
 
-                # Run separate eval for each prompt (isolated contexts)
-                all_results = []
+                # Execute each prompt (delegated to PromptExecutor)
+                prompt_results = []
                 for i, prompt in enumerate(prompts):
                     logger.debug(f'Running eval for prompt {i + 1}/{len(prompts)}')
 
-                    # Initialize metrics tracker for this prompt
-                    metrics_tracker = MetricsTracker()
-
-                    # Run agent loop with single prompt
-                    messages = await run_agent_loop(
-                        bedrock_client=bedrock_client,
-                        session=session,
+                    result = await self.prompt_executor.execute_prompt(
                         prompt=prompt,
-                        project_root=mcp_repo_root,
-                        mcp_tools=tools_response.tools,
-                        metrics_tracker=metrics_tracker,
-                        max_turns=task.max_turns,
+                        prompt_index=i,
+                        task=task,
+                        session=session,
+                        tools_response=tools_response,
+                        context=context,
                     )
+                    prompt_results.append(result)
 
-                    # Execute captors
-                    captured_data = {'prompt_index': i, 'prompt': prompt}
-                    captors = task.get_captors(context)
-                    for captor in captors:
-                        captor_output = captor.capture(messages, metrics_tracker, mcp_repo_root)
-                        captured_data.update(captor_output)
+                # Aggregate results across all prompts (delegated to ResultAggregator)
+                return self.result_aggregator.aggregate_task_results(
+                    task_id=task.id, prompt_results=prompt_results
+                )
 
-                    # Execute validators
-                    validation_results = []
-                    validators = task.get_validators(context)
+    def _create_context(self, mcp_repo_root: Path, bedrock_client: Any) -> Dict[str, Any]:
+        """Create context dictionary for task execution.
 
-                    for validator in validators:
-                        validation_result = await validator.validate(
-                            captured_data, task.rubric, bedrock_client
-                        )
-                        validation_results.append(validation_result)
+        Args:
+            mcp_repo_root: MCP repository root directory
+            bedrock_client: Boto3 Bedrock Runtime client
 
-                    # Calculate metrics for this prompt
-                    metrics = metrics_tracker.get_metrics(expected_tools=task.expected_tools)
-
-                    # Aggregate results for this prompt
-                    overall_pass = all(v.get('overall_pass', False) for v in validation_results)
-
-                    all_results.append(
-                        {
-                            'prompt_index': i,
-                            'prompt': prompt,
-                            'success': overall_pass,
-                            'validation_results': validation_results,
-                            'metrics': metrics,
-                            'captured_data': captured_data,
-                        }
-                    )
-
-                # Aggregate results across all prompts
-                overall_task_pass = all(r['success'] for r in all_results)
-
-                return {
-                    'task_id': task.id,
-                    'success': overall_task_pass,
-                    'num_prompts': len(prompts),
-                    'prompt_results': all_results,
-                }
+        Returns:
+            Context dictionary passed to tasks, captors, and validators
+        """
+        return {
+            'mcp_repo_root': mcp_repo_root,
+            'bedrock_client': bedrock_client,
+        }
 
     def list_tasks(self) -> List[Dict[str, str]]:
         """List all configured tasks.
