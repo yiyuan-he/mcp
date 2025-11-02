@@ -1,0 +1,40 @@
+{
+  "AuditFindings": [
+    {
+      "KeyAttributes": {
+        "Name": "CheckoutService",
+        "Type": "Service",
+        "Environment": "prod"
+      },
+      "Type": "Service",
+      "AuditorResults": [
+        {
+          "Auditor": "slo",
+          "Description": "CRITICAL: 2 SLOs are currently breached. CheckoutService-Availability SLO is at 94.2% (target: 99.5%). CheckoutService-Latency SLO is at 89.1% (target: 95.0%).",
+          "Severity": "CRITICAL",
+          "Details": {
+            "BreachedSlos": [
+              {
+                "SloName": "CheckoutService-Availability",
+                "CurrentAttainment": 94.2,
+                "TargetAttainment": 99.5,
+                "Status": "BREACHED"
+              },
+              {
+                "SloName": "CheckoutService-Latency",
+                "CurrentAttainment": 89.1,
+                "TargetAttainment": 95.0,
+                "Status": "BREACHED"
+              }
+            ]
+          }
+        },
+        {
+          "Auditor": "operation_metric",
+          "Description": "Elevated error rates detected. POST /checkout operation has 8.5% error rate (baseline: <1%).",
+          "Severity": "WARNING"
+        }
+      ]
+    }
+  ]
+}

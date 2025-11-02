@@ -1,0 +1,45 @@
+{
+  "Slo": {
+    "Name": "CheckoutService-Availability",
+    "Arn": "arn:aws:application-signals:us-west-2:123456789012:slo/CheckoutService-Availability",
+    "Description": "Availability SLO for CheckoutService - ensures 99.5% of requests succeed",
+    "CreatedTime": 1705318200,
+    "LastUpdatedTime": 1705759320,
+    "EvaluationType": "PeriodBased",
+    "Sli": {
+      "SliMetric": {
+        "KeyAttributes": {
+          "Name": "CheckoutService",
+          "Type": "Service",
+          "Environment": "prod"
+        },
+        "MetricType": "AVAILABILITY",
+        "MetricDataQueries": [
+          {
+            "Id": "availability",
+            "MetricStat": {
+              "Metric": {
+                "Namespace": "AWS/ApplicationSignals",
+                "MetricName": "Availability"
+              },
+              "Period": 300,
+              "Stat": "Average"
+            },
+            "ReturnData": true
+          }
+        ]
+      },
+      "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    },
+    "Goal": {
+      "AttainmentGoal": 99.5,
+      "WarningThreshold": 50,
+      "Interval": {
+        "RollingInterval": {
+          "Duration": 30,
+          "DurationUnit": "DAY"
+        }
+      }
+    }
+  }
+}

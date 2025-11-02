@@ -1,0 +1,46 @@
+{
+  "Slo": {
+    "Name": "CheckoutService-Latency",
+    "Arn": "arn:aws:application-signals:us-west-2:123456789012:slo/CheckoutService-Latency",
+    "Description": "Latency SLO for CheckoutService - ensures 95% of requests complete within 500ms",
+    "CreatedTime": 1705318200,
+    "LastUpdatedTime": 1705759320,
+    "EvaluationType": "PeriodBased",
+    "Sli": {
+      "SliMetric": {
+        "KeyAttributes": {
+          "Name": "CheckoutService",
+          "Type": "Service",
+          "Environment": "prod"
+        },
+        "MetricType": "LATENCY",
+        "MetricDataQueries": [
+          {
+            "Id": "latency_p99",
+            "MetricStat": {
+              "Metric": {
+                "Namespace": "AWS/ApplicationSignals",
+                "MetricName": "Latency"
+              },
+              "Period": 300,
+              "Stat": "p99"
+            },
+            "ReturnData": true
+          }
+        ]
+      },
+      "ComparisonOperator": "LessThanThreshold",
+      "MetricThreshold": 500
+    },
+    "Goal": {
+      "AttainmentGoal": 95.0,
+      "WarningThreshold": 50,
+      "Interval": {
+        "RollingInterval": {
+          "Duration": 30,
+          "DurationUnit": "DAY"
+        }
+      }
+    }
+  }
+}

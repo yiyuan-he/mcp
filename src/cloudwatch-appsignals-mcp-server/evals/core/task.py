@@ -19,7 +19,7 @@ and optional mock configurations.
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -39,11 +39,15 @@ class Task(ABC):
         id: Unique identifier for the task
         max_turns: Maximum conversation turns allowed (default: 20)
         expected_tools: List of MCP tool names expected to be called (for hit rate metric)
+        mocks: Optional mock configuration for AWS APIs or other external services
+        fixtures_dir: Base directory for resolving relative fixture paths (None = no path resolution)
     """
 
     id: str
     max_turns: int = 20
     expected_tools: List[str] = None
+    mocks: Optional[Dict[str, Any]] = None
+    fixtures_dir: Optional[Path] = None
 
     def __post_init__(self):
         """Initialize expected_tools to empty list if None."""
@@ -135,27 +139,123 @@ class Task(ABC):
         return []
 
     def get_mocks(self) -> Optional[dict]:
-        """Return mock configuration for this task.
+        """Return mock configuration for this task with resolved fixture paths.
 
-        Override this method to provide mock responses for AWS APIs
-        or other external services used by the MCP server.
+        This method handles path resolution automatically. Subclasses should
+        pass mock configuration via the `mocks` parameter in __init__ instead
+        of overriding this method.
 
         Returns:
-            Mock configuration dictionary or None
+            Mock configuration dictionary with resolved paths, or None
 
-        Example:
-            return {
-                'boto3': {
-                    'cloudwatch': {
-                        'GetMetricData': {
-                            'MetricDataResults': [...]
-                        },
-                        'DescribeAlarms': 'fixtures/cloudwatch/alarms.json'
+        Raises:
+            ValueError: If mocks contain fixture file references but fixtures_dir is not specified
+
+        Example task definition:
+            Task(
+                id='my_task',
+                fixtures_dir=Path('/path/to/fixtures'),
+                mocks={
+                    'boto3': {
+                        'application-signals': {
+                            'list_audit_findings': 'list_audit_findings/healthy.json',
+                            'get_service_level_objective': [
+                                'get_service_level_objective/slo1.json',
+                                'get_service_level_objective/slo2.json'
+                            ]
+                        }
                     }
                 }
-            }
+            )
         """
-        return None
+        if not self.mocks:
+            return None
+
+        # If mocks exist but no fixtures_dir, validate that we don't have fixture references
+        if self.fixtures_dir is None:
+            if self._has_fixture_references(self.mocks):
+                raise ValueError(
+                    f"Task '{self.id}' has fixture file references in mocks but no fixtures_dir specified. "
+                    f"Either provide fixtures_dir parameter or use absolute paths/inline mock data."
+                )
+            # No fixture files, just return as-is (inline mocks or absolute paths)
+            return self.mocks
+
+        # Resolve fixture paths relative to fixtures directory
+        return self._resolve_fixture_paths(self.mocks, self.fixtures_dir)
+
+    def _has_fixture_references(self, mocks: Dict[str, Any]) -> bool:
+        """Check if mocks contain relative fixture file references.
+
+        Args:
+            mocks: Mock configuration dictionary
+
+        Returns:
+            True if any value looks like a relative fixture file path
+        """
+        for key, value in mocks.items():
+            if isinstance(value, dict):
+                if self._has_fixture_references(value):
+                    return True
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, str) and (item.endswith('.json') or item.endswith('.txt')):
+                        # Check if it looks like a relative path (not absolute)
+                        if not Path(item).is_absolute():
+                            return True
+            elif isinstance(value, str) and (value.endswith('.json') or value.endswith('.txt')):
+                # Check if it looks like a relative path (not absolute)
+                if not Path(value).is_absolute():
+                    return True
+        return False
+
+    def _resolve_fixture_paths(self, mocks: Dict[str, Any], fixtures_dir: Path) -> Dict[str, Any]:
+        """Recursively resolve fixture file paths to absolute paths.
+
+        Args:
+            mocks: Mock configuration dictionary
+            fixtures_dir: Base directory for fixture files
+
+        Returns:
+            Mock configuration with resolved paths
+        """
+        resolved = {}
+        for key, value in mocks.items():
+            if isinstance(value, dict):
+                # Recursively resolve nested dictionaries
+                resolved[key] = self._resolve_fixture_paths(value, fixtures_dir)
+            elif isinstance(value, list):
+                # Lists should contain request/response pairs
+                resolved[key] = [self._resolve_request_response_pair(item, fixtures_dir) for item in value]
+            else:
+                # Pass through other values
+                resolved[key] = value
+        return resolved
+
+    def _resolve_request_response_pair(self, pair: Dict[str, Any], fixtures_dir: Path) -> Dict[str, Any]:
+        """Resolve a request/response pair.
+
+        Args:
+            pair: Dict with 'request' and 'response' keys
+            fixtures_dir: Base directory for fixture files
+
+        Returns:
+            Resolved pair with absolute response path
+        """
+        if not isinstance(pair, dict) or 'request' not in pair or 'response' not in pair:
+            raise ValueError(
+                f"Expected request/response pair dict with 'request' and 'response' keys, got: {pair}"
+            )
+
+        response = pair['response']
+        # Resolve response path if it's a string fixture reference
+        if isinstance(response, str) and (response.endswith('.json') or response.endswith('.txt')):
+            response = str(fixtures_dir / response)
+
+        return {
+            'request': pair['request'],
+            'response': response
+        }
 
     def get_working_directory(self) -> Optional[Path]:
         """Return the working directory for this task.

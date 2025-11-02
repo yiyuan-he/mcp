@@ -38,7 +38,7 @@ SERVER_PATH = (
 )
 
 # Fixtures directory for investigation task mocks
-FIXTURES_DIR = Path(__file__).parent / 'fixtures' / 'investigation' / 'list_audit_findings'
+FIXTURES_DIR = Path(__file__).parent / 'fixtures'
 
 
 class ServiceInvestigationTask(Task):
@@ -62,7 +62,8 @@ class ServiceInvestigationTask(Task):
         prompt: str,
         expected_tools: list[str],
         validation_rubric: list[str],
-        mock_fixture: str = None,
+        mocks: dict = None,
+        fixtures_dir: Path = None,
         max_turns: int = 15,
     ):
         """Initialize ServiceInvestigationTask.
@@ -72,13 +73,19 @@ class ServiceInvestigationTask(Task):
             prompt: Investigation prompt (e.g., "Why is pet clinic having issues?")
             expected_tools: Expected MCP tools to be called (typically ['audit_services'])
             validation_rubric: Criteria for validating investigation quality
-            mock_fixture: Filename of fixture in FIXTURES_DIR
+            mocks: Mock configuration for AWS APIs (optional)
+            fixtures_dir: Base directory for fixture files (required if using fixture references)
             max_turns: Maximum conversation turns (default: 15 for complex investigations)
         """
-        super().__init__(id=id, max_turns=max_turns, expected_tools=expected_tools)
+        super().__init__(
+            id=id,
+            max_turns=max_turns,
+            expected_tools=expected_tools,
+            mocks=mocks,
+            fixtures_dir=fixtures_dir
+        )
         self.prompt_text = prompt
         self.validation_rubric = validation_rubric
-        self.mock_fixture = mock_fixture
 
     def get_prompts(self, context: dict) -> list[str]:
         """Return the investigation prompt.
@@ -129,23 +136,6 @@ class ServiceInvestigationTask(Task):
             LLMJudgeValidator(validation_prompt_template=DATA_INTERPRETATION_VALIDATION_PROMPT)
         ]
 
-    def get_mocks(self):
-        """Return mock configuration for AWS API calls.
-
-        Returns:
-            Mock config dictionary with fixture references, or None
-        """
-        if not self.mock_fixture:
-            return None
-
-        return {
-            'boto3': {
-                'application-signals': {
-                    'list_audit_findings': str(FIXTURES_DIR / self.mock_fixture)
-                }
-            }
-        }
-
 
 # Task definitions demonstrating range of complexity
 
@@ -160,7 +150,25 @@ TASKS = [
             'Response provides clear health summary (healthy/unhealthy)',
             'Response mentions specific services and their status',
         ],
-        mock_fixture='healthy_service.json',
+        fixtures_dir=FIXTURES_DIR,
+        mocks={
+            'boto3': {
+                'application-signals': {
+                    'list_services': [
+                        {
+                            'request': {},  # No parameters needed
+                            'response': 'investigation/list_services/checkout_service.json'
+                        }
+                    ],
+                    'list_audit_findings': [
+                        {
+                            'request': {},  # audit_services may pass various filters, but we accept any
+                            'response': 'investigation/list_audit_findings/healthy_service.json'
+                        }
+                    ]
+                }
+            }
+        },
         max_turns=8,
     ),
     # Medium: SLO breach detection
@@ -174,7 +182,25 @@ TASKS = [
             'Response includes quantitative breach information (target: 99.5%, actual: 94.2%)',
             'Response distinguishes between breached and healthy SLOs',
         ],
-        mock_fixture='slo_breach.json',
+        fixtures_dir=FIXTURES_DIR,
+        mocks={
+            'boto3': {
+                'application-signals': {
+                    'list_services': [
+                        {
+                            'request': {},
+                            'response': 'investigation/list_services/checkout_service.json'
+                        }
+                    ],
+                    'list_audit_findings': [
+                        {
+                            'request': {},
+                            'response': 'investigation/list_audit_findings/slo_breach.json'
+                        }
+                    ]
+                }
+            }
+        },
         max_turns=10,
     ),
     # Complex: Multi-auditor root cause analysis - DynamoDB throttling
@@ -192,7 +218,70 @@ Users are reporting that they cannot book appointments. Can you investigate what
             'Response explains the causal chain (PetClinic → SchedulingService → DynamoDB throttling)',
             'Recommendations provided (increase DynamoDB capacity, enable auto-scaling, implement retries, or add caching)',
         ],
-        mock_fixture='petclinic_scheduling.json',
+        fixtures_dir=FIXTURES_DIR,
+        mocks={
+            'boto3': {
+                'application-signals': {
+                    'list_services': [
+                        {
+                            'request': {},
+                            'response': 'investigation/list_services/checkout_service.json'
+                        }
+                    ],
+                    'list_audit_findings': [
+                        {
+                            'request': {},
+                            'response': 'investigation/list_audit_findings/petclinic_scheduling.json'
+                        }
+                    ]
+                }
+            }
+        },
         max_turns=20,  # Complex investigation may need more turns
+    ),
+    # Multi-tool: SLO breach investigation with detailed SLO inspection
+    ServiceInvestigationTask(
+        id='slo_breach_detailed_investigation',
+        prompt="""I noticed some SLO alerts for CheckoutService. Can you investigate which SLOs are breached
+and provide detailed information about their configuration and current status?""",
+        expected_tools=['audit_services', 'get_slo'],
+        validation_rubric=[
+            'Agent called audit_services to discover breached SLOs',
+            'Agent identified CheckoutService has 2 breached SLOs (Availability and Latency)',
+            'Agent called get_slo to get detailed configuration for at least one breached SLO',
+            'Response includes SLO configuration details (attainment goal, current attainment, interval)',
+            'Response explains the breach severity (Availability: 94.2% vs 99.5% target)',
+            'Response provides actionable insights based on both audit findings and SLO configuration',
+        ],
+        fixtures_dir=FIXTURES_DIR,
+        mocks={
+            'boto3': {
+                'application-signals': {
+                    'list_services': [
+                        {
+                            'request': {},
+                            'response': 'investigation/list_services/checkout_service.json'
+                        }
+                    ],
+                    'list_audit_findings': [
+                        {
+                            'request': {},
+                            'response': 'investigation/list_audit_findings/slo_breach_investigation.json'
+                        }
+                    ],
+                    'get_service_level_objective': [
+                        {
+                            'request': {'Id': 'CheckoutService-Availability'},
+                            'response': 'investigation/get_service_level_objective/checkout_availability_slo.json'
+                        },
+                        {
+                            'request': {'Id': 'CheckoutService-Latency'},
+                            'response': 'investigation/get_service_level_objective/checkout_latency_slo.json'
+                        }
+                    ]
+                }
+            }
+        },
+        max_turns=20,
     ),
 ]

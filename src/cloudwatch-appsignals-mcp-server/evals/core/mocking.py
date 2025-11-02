@@ -59,30 +59,44 @@ class MockHandler(ABC):
     def resolve_fixture(self, value: Any, fixtures_dir: Optional[Path] = None) -> Any:
         """Resolve fixture references to actual data.
 
-        If value is a string path to a JSON file, load and return it.
-        Otherwise return value as-is.
+        Handles lists of request/response pairs. For each pair, loads the response fixture
+        (if it's a file path) and returns loaded JSON data.
 
         Args:
-            value: Value that may be a fixture reference
-            fixtures_dir: Directory containing fixture files
+            value: Value that may be a fixture reference (list of request/response pairs)
+            fixtures_dir: Directory containing fixture files (should be None as paths are already absolute)
 
         Returns:
-            Resolved fixture data or original value
+            Resolved fixture data
         """
-        if isinstance(value, str) and (value.endswith('.json') or value.endswith('.txt')):
-            if fixtures_dir:
-                fixture_path = fixtures_dir / value
-            else:
-                # Assume relative to current directory
-                fixture_path = Path(value)
+        # Handle lists of request/response pairs
+        if isinstance(value, list):
+            return [self.resolve_fixture(item, fixtures_dir) for item in value]
 
-            if fixture_path.exists():
-                if value.endswith('.json'):
-                    with open(fixture_path, 'r') as f:
-                        return json.load(f)
-                else:
-                    with open(fixture_path, 'r') as f:
-                        return f.read()
+        # Handle request/response pair dicts
+        if isinstance(value, dict):
+            if 'request' in value and 'response' in value:
+                # Load response fixture if it's a file path (should be absolute path string)
+                response = value['response']
+                if isinstance(response, str) and (response.endswith('.json') or response.endswith('.txt')):
+                    fixture_path = Path(response)  # Already absolute
+                    if fixture_path.exists():
+                        if response.endswith('.json'):
+                            with open(fixture_path, 'r') as f:
+                                response = json.load(f)
+                        else:
+                            with open(fixture_path, 'r') as f:
+                                response = f.read()
+                    else:
+                        raise FileNotFoundError(f"Fixture file not found: {response}")
+
+                return {
+                    'request': value['request'],
+                    'response': response
+                }
+
+            # Other dicts pass through unchanged (e.g., inline mock data)
+            return value
 
         return value
 
@@ -153,16 +167,62 @@ class Boto3MockHandler(MockHandler):
 
             # Set up each operation as a mock method
             for operation, response_data in service_mocks.items():
-                # Handle sequential responses (list of responses)
-                if isinstance(response_data, list):
-                    mock_method = MagicMock(side_effect=response_data)
-                else:
-                    mock_method = MagicMock(return_value=response_data)
+                # All mocks must be lists of request/response pairs
+                if not isinstance(response_data, list):
+                    raise ValueError(
+                        f"Invalid mock configuration for {service_name}.{operation}. "
+                        f"Expected list of request/response pairs, got: {type(response_data)}. "
+                        f"Use format: [{{'request': {{}}, 'response': 'fixture.json'}}]"
+                    )
 
-                # Convert operation name to method name (PascalCase to snake_case for some SDKs)
+                if not response_data or not isinstance(response_data[0], dict) or 'request' not in response_data[0]:
+                    raise ValueError(
+                        f"Invalid mock configuration for {service_name}.{operation}. "
+                        f"Lists must contain dicts with 'request' and 'response' keys. "
+                        f"Got: {response_data}"
+                    )
+
+                # Create parameter-aware mock with request/response pairs
+                mock_method = self._create_parameter_aware_mock(operation, response_data)
                 setattr(mock_client, operation, mock_method)
 
         return mock_client
+
+    def _create_parameter_aware_mock(self, operation: str, matchers: list) -> MagicMock:
+        """Create a mock that matches on parameters.
+
+        Matching rules:
+        - Empty request dict {} matches any parameters (wildcard)
+        - Non-empty request dict matches when all specified params are present and equal
+
+        Args:
+            operation: Operation name (for error messages)
+            matchers: List of dicts with 'request' and 'response' keys
+
+        Returns:
+            MagicMock that returns responses based on parameter matching
+        """
+        def mock_implementation(**kwargs):
+            # Try to find a matching response
+            for matcher in matchers:
+                request_params = matcher.get('request', {})
+                response = matcher.get('response')
+
+                # Empty request dict {} matches any parameters (wildcard)
+                if not request_params:
+                    return response
+
+                # Non-empty request dict: check if all specified parameters match
+                if all(kwargs.get(key) == value for key, value in request_params.items()):
+                    return response
+
+            # No match found - raise helpful error
+            raise ValueError(
+                f"No mock response found for {operation} with parameters: {kwargs}\n"
+                f"Available request patterns: {[m.get('request') for m in matchers]}"
+            )
+
+        return MagicMock(side_effect=mock_implementation)
 
 
 class MockHandlerRegistry:

@@ -143,11 +143,9 @@ def main():
     # Load mock configuration
     mock_config = load_mock_config()
 
-    # Determine fixtures directory (relative to mock file if provided)
+    # Fixture paths in mock_config are already absolute (resolved by Task.get_mocks())
+    # So we don't need to pass fixtures_dir
     fixtures_dir = None
-    mock_file = os.environ.get('MCP_EVAL_MOCK_FILE')
-    if mock_file:
-        fixtures_dir = Path(mock_file).parent
 
     # Apply mocks BEFORE importing server
     if mock_config:

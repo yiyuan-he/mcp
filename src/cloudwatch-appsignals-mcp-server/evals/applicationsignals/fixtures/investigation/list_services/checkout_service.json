@@ -1,0 +1,12 @@
+{
+  "ServiceSummaries": [
+    {
+      "KeyAttributes": {
+        "Name": "CheckoutService",
+        "Type": "Service",
+        "Environment": "prod"
+      },
+      "MetricReferences": []
+    }
+  ]
+}
