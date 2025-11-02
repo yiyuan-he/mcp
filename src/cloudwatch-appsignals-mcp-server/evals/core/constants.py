@@ -1,15 +1,30 @@
 """Configuration constants for MCP tool evaluation framework.
 
 Centralized location for all configurable values.
+
+Environment variable overrides:
+- MCP_EVAL_MODEL_ID: Override default Bedrock model ID
+- MCP_EVAL_AWS_REGION: Override default AWS region
+- MCP_EVAL_MAX_TURNS: Override default max conversation turns
+- MCP_EVAL_TEMPERATURE: Override default model temperature
 """
 
-# AWS Bedrock configuration
-DEFAULT_MODEL_ID = 'us.anthropic.claude-sonnet-4-20250514-v1:0'
-DEFAULT_AWS_REGION = 'us-east-1'
+import os
 
-# Agent configuration
-DEFAULT_MAX_TURNS = 20
-DEFAULT_TEMPERATURE = 0.0
+
+# Fallback values (used when environment variables are not set)
+_FALLBACK_MODEL_ID = 'us.anthropic.claude-sonnet-4-20250514-v1:0'
+_FALLBACK_AWS_REGION = 'us-east-1'
+_FALLBACK_MAX_TURNS = 20
+_FALLBACK_TEMPERATURE = 0.0
+
+# AWS Bedrock configuration (configurable via environment variables)
+DEFAULT_MODEL_ID = os.environ.get('MCP_EVAL_MODEL_ID', _FALLBACK_MODEL_ID)
+DEFAULT_AWS_REGION = os.environ.get('MCP_EVAL_AWS_REGION', _FALLBACK_AWS_REGION)
+
+# Agent configuration (configurable via environment variables)
+DEFAULT_MAX_TURNS = int(os.environ.get('MCP_EVAL_MAX_TURNS', str(_FALLBACK_MAX_TURNS)))
+DEFAULT_TEMPERATURE = float(os.environ.get('MCP_EVAL_TEMPERATURE', str(_FALLBACK_TEMPERATURE)))
 
 # Specialized validation prompts for different eval types
 
