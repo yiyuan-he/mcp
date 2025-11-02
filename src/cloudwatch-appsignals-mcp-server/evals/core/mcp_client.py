@@ -91,7 +91,8 @@ def connect_to_mcp_server(
         env['LOGURU_LEVEL'] = 'ERROR'
         env['MCP_CLOUDWATCH_APPSIGNALS_LOG_LEVEL'] = 'WARNING'
 
-    # If mocks provided, write to temp file and use wrapper
+    # Always use wrapper for consistent logging configuration
+    # If mocks provided, write to temp file
     if mock_config:
         # Create temp file for mock config
         # Note: We don't delete this file immediately because the subprocess needs it.
@@ -103,38 +104,28 @@ def connect_to_mcp_server(
         # Set environment variable for wrapper to find mocks
         env['MCP_EVAL_MOCK_FILE'] = mock_file_path
 
-        # Use wrapper to start server with mocks
-        # Run wrapper as a module so relative imports work
-        # cwd must be where 'evals' package can be imported from
-        from evals import MCP_PROJECT_ROOT
+    # Use wrapper to start server (handles both mocked and non-mocked cases)
+    # Run wrapper as a module so relative imports work
+    # cwd must be where 'evals' package can be imported from
+    from evals import MCP_PROJECT_ROOT
 
-        mcp_server_root = MCP_PROJECT_ROOT / 'src' / 'cloudwatch-appsignals-mcp-server'
+    mcp_server_root = MCP_PROJECT_ROOT / 'src' / 'cloudwatch-appsignals-mcp-server'
 
-        # Use sys.executable to ensure we use the same Python interpreter (with venv)
-        server_params = StdioServerParameters(
-            command=sys.executable,
-            args=[
-                '-m',
-                'evals.core.mock_server_wrapper',
-                str(server_file),
-                '--server-cwd',
-                str(working_dir),
-            ],
-            env=env,
-            cwd=str(mcp_server_root),
-        )
+    # Use sys.executable to ensure we use the same Python interpreter (with venv)
+    server_params = StdioServerParameters(
+        command=sys.executable,
+        args=[
+            '-m',
+            'evals.core.mock_server_wrapper',
+            str(server_file),
+            '--server-cwd',
+            str(working_dir),
+        ],
+        env=env,
+        cwd=str(mcp_server_root),
+    )
 
-        return stdio_client(server_params)
-    else:
-        # Direct connection without mocks - run as module
-        # Use sys.executable to ensure we use the same Python interpreter (with venv)
-        server_params = StdioServerParameters(
-            command=sys.executable,
-            args=['-m', module_path],
-            env=env,
-            cwd=str(working_dir),
-        )
-        return stdio_client(server_params)
+    return stdio_client(server_params)
 
 
 def convert_mcp_tools_to_bedrock(mcp_tools) -> List[Dict[str, Any]]:
