@@ -149,7 +149,7 @@ def main():
     # Load mock configuration
     mock_config = load_mock_config()
 
-    # Fixture paths in mock_config are already absolute (resolved by Task.get_mocks())
+    # Fixture paths in mock_config are already absolute (resolved by Task.resolved_mock_config property)
     # So we don't need to pass fixtures_dir
     fixtures_dir = None
 

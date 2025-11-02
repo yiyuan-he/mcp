@@ -64,7 +64,7 @@ class ServiceInvestigationTask(Task):
         prompt: str,
         expected_tools: list[str],
         validation_rubric: list[str],
-        mocks: dict = None,
+        mock_config: dict = None,
         fixtures_dir: Path = None,
         max_turns: int = 15,
     ):
@@ -75,7 +75,7 @@ class ServiceInvestigationTask(Task):
             prompt: Investigation prompt (e.g., "Why is pet clinic having issues?")
             expected_tools: Expected MCP tools to be called (typically ['audit_services'])
             validation_rubric: Criteria for validating investigation quality
-            mocks: Mock configuration for AWS APIs (optional)
+            mock_config: Mock configuration for AWS APIs (optional)
             fixtures_dir: Base directory for fixture files (required if using fixture references)
             max_turns: Maximum conversation turns (default: 15 for complex investigations)
         """
@@ -83,7 +83,7 @@ class ServiceInvestigationTask(Task):
             id=id,
             max_turns=max_turns,
             expected_tools=expected_tools,
-            mocks=mocks,
+            mock_config=mock_config,
             fixtures_dir=fixtures_dir,
         )
         self.prompt_text = prompt
@@ -166,7 +166,7 @@ Users are reporting that they cannot book appointments. Can you investigate what
             'Recommendations provided (increase DynamoDB capacity, enable auto-scaling, implement retries, or add caching)',
         ],
         fixtures_dir=FIXTURES_DIR,
-        mocks={
+        mock_config={
             'boto3': {
                 'application-signals': {
                     'list_services': [
@@ -201,7 +201,7 @@ and provide detailed information about their configuration and current status?""
             'Response provides actionable insights based on both audit findings and SLO configuration',
         ],
         fixtures_dir=FIXTURES_DIR,
-        mocks={
+        mock_config={
             'boto3': {
                 'application-signals': {
                     'list_services': [

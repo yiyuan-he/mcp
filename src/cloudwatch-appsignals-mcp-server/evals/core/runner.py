@@ -123,7 +123,7 @@ class EvalRunner:
         # Get server configuration from task
         server_file = str(task.get_server_file())
         server_root_dir = str(task.get_server_root_directory())
-        mock_config = task.get_mocks()
+        mock_config = task.resolved_mock_config
 
         # Connect to MCP server with optional mocks
         async with connect_to_mcp_server(

@@ -39,14 +39,14 @@ class Task(ABC):
         id: Unique identifier for the task
         max_turns: Maximum conversation turns allowed (default: 20)
         expected_tools: List of MCP tool names expected to be called (for hit rate metric)
-        mocks: Optional mock configuration for AWS APIs or other external services
+        mock_config: Optional mock configuration for AWS APIs or other external services (raw, with relative paths)
         fixtures_dir: Base directory for resolving relative fixture paths (None = no path resolution)
     """
 
     id: str
     max_turns: int = 20
     expected_tools: List[str] = None
-    mocks: Optional[Dict[str, Any]] = None
+    mock_config: Optional[Dict[str, Any]] = None
     fixtures_dir: Optional[Path] = None
 
     def __post_init__(self):
@@ -135,62 +135,75 @@ class Task(ABC):
         """
         return []
 
-    def get_mocks(self) -> Optional[dict]:
-        """Return mock configuration for this task with resolved fixture paths.
+    @property
+    def resolved_mock_config(self) -> Optional[dict]:
+        """Mock configuration with all fixture paths resolved to absolute paths.
 
-        This method handles path resolution automatically. Subclasses should
-        pass mock configuration via the `mocks` parameter in __init__ instead
-        of overriding this method.
+        This property automatically resolves relative fixture file paths to absolute
+        paths based on the fixtures_dir. This is what should be passed to the
+        mocking system at runtime.
 
         Returns:
-            Mock configuration dictionary with resolved paths, or None
+            Mock configuration dictionary with resolved absolute paths, or None
 
         Raises:
-            ValueError: If mocks contain fixture file references but fixtures_dir is not specified
+            ValueError: If mock_config contains fixture file references but fixtures_dir is not specified
 
-        Example task definition:
-            Task(
+        Example:
+            # Task definition with relative paths:
+            task = Task(
                 id='my_task',
-                fixtures_dir=Path('/path/to/fixtures'),
-                mocks={
+                fixtures_dir=Path('/project/fixtures'),
+                mock_config={
                     'boto3': {
                         'application-signals': {
-                            'list_audit_findings': 'list_audit_findings/healthy.json',
-                            'get_service_level_objective': [
-                                'get_service_level_objective/slo1.json',
-                                'get_service_level_objective/slo2.json'
+                            'list_services': [
+                                {'request': {}, 'response': 'services.json'}
                             ]
                         }
                     }
                 }
             )
+
+            # Access resolved mock config:
+            task.resolved_mock_config
+            # Returns:
+            # {
+            #     'boto3': {
+            #         'application-signals': {
+            #             'list_services': [
+            #                 {'request': {}, 'response': '/project/fixtures/services.json'}
+            #             ]
+            #         }
+            #     }
+            # }
         """
-        if not self.mocks:
+        if not self.mock_config:
             return None
 
-        # If mocks exist but no fixtures_dir, validate that we don't have fixture references
+        # If mock_config exists but no fixtures_dir, validate that we don't have fixture references
         if self.fixtures_dir is None:
-            if self._has_fixture_references(self.mocks):
+            if self._has_fixture_references(self.mock_config):
                 raise ValueError(
-                    f"Task '{self.id}' has fixture file references in mocks but no fixtures_dir specified. "
+                    f"Task '{self.id}' has fixture file references in mock_config but no fixtures_dir specified. "
                     f'Either provide fixtures_dir parameter or use absolute paths/inline mock data.'
                 )
-            # No fixture files, just return as-is (inline mocks or absolute paths)
-            return self.mocks
+            # No fixture files, just return as-is (inline mock config or absolute paths)
+            return self.mock_config
 
         # Resolve fixture paths relative to fixtures directory
-        return self._resolve_fixture_paths(self.mocks, self.fixtures_dir)
+        return self._resolve_fixture_paths(self.mock_config, self.fixtures_dir)
 
-    def _has_fixture_references(self, mocks: Dict[str, Any]) -> bool:
-        """Check if mocks contain relative fixture file references.
+    def _has_fixture_references(self, mock_config: Dict[str, Any]) -> bool:
+        """Check if mock configuration contains relative fixture file references.
 
         Args:
-            mocks: Mock configuration dictionary
+            mock_config: Mock configuration dictionary
 
         Returns:
             True if any value looks like a relative fixture file path
         """
-        for key, value in mocks.items():
+        for key, value in mock_config.items():
             if isinstance(value, dict):
                 if self._has_fixture_references(value):
                     return True
@@ -206,18 +219,18 @@ class Task(ABC):
                     return True
         return False
 
-    def _resolve_fixture_paths(self, mocks: Dict[str, Any], fixtures_dir: Path) -> Dict[str, Any]:
+    def _resolve_fixture_paths(self, mock_config: Dict[str, Any], fixtures_dir: Path) -> Dict[str, Any]:
         """Recursively resolve fixture file paths to absolute paths.
 
         Args:
-            mocks: Mock configuration dictionary
+            mock_config: Mock configuration dictionary
             fixtures_dir: Base directory for fixture files
 
         Returns:
             Mock configuration with resolved paths
         """
         resolved = {}
-        for key, value in mocks.items():
+        for key, value in mock_config.items():
             if isinstance(value, dict):
                 # Recursively resolve nested dictionaries
                 resolved[key] = self._resolve_fixture_paths(value, fixtures_dir)
