@@ -24,9 +24,9 @@ These tasks range from simple health checks to complex multi-auditor investigati
 showcasing the eval framework's ability to handle read-only investigative workflows.
 """
 
-from pathlib import Path
-from framework import Task, ToolCallsCaptor, FinalResponseCaptor, LLMJudgeValidator
+from framework import FinalResponseCaptor, LLMJudgeValidator, Task, ToolCallsCaptor
 from framework.constants import DATA_INTERPRETATION_VALIDATION_PROMPT
+from pathlib import Path
 
 
 # Server path for this tool
