@@ -58,7 +58,7 @@ class GitDiffCaptor(Captor):
     ) -> Dict[str, Any]:
         """Capture git diff for configured paths."""
         try:
-            # Build full paths from mcp_repo_root + git_paths
+            # Build full paths from project_root + git_paths
             full_paths = [str(project_root / path) for path in self.git_paths]
 
             # Run git diff with path arguments to limit changes to specified paths

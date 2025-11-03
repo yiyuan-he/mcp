@@ -255,14 +255,7 @@ async def main():
         # Execute each task
         results = []
         for task in tasks:
-            # Get working directory from task (or use current directory if not specified)
-            working_directory = task.get_working_directory()
-            if working_directory is None:
-                working_directory = Path.cwd()
-
-            logger.debug(f'Working directory for task {task.id}: {working_directory}')
-
-            result = await runner.run_task(task, bedrock_client, args.verbose, working_directory)
+            result = await runner.run_task(task, bedrock_client, args.verbose)
             results.append(result)
 
         # Report results and cleanup

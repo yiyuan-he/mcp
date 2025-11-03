@@ -40,21 +40,15 @@ class EvalRunner:
         self,
         bedrock_client: Any,
         verbose: bool = False,
-        mcp_repo_root: Path = None,
     ) -> List[Dict[str, Any]]:
         """Run all tasks and return results."""
-        if mcp_repo_root is None:
-            mcp_repo_root = Path.cwd()
-
         results = []
 
-        # Connect to MCP server once for all tasks
-        # Note: We connect per-task if mocks differ, otherwise reuse connection
         for task in self.tasks:
             logger.info(f'Running task: {task.id}')
 
             try:
-                result = await self.run_task(task, bedrock_client, verbose, mcp_repo_root)
+                result = await self.run_task(task, bedrock_client, verbose)
                 results.append(result)
             except Exception as e:
                 logger.error(f'Task {task.id} failed: {e}')
@@ -67,16 +61,16 @@ class EvalRunner:
         task: Task,
         bedrock_client: Any,
         verbose: bool,
-        working_directory: Path,
     ) -> Dict[str, Any]:
         """Run a single task.
 
         Connects to MCP server and executes prompt via PromptExecutor.
         """
-        # Get server configuration from task
+        # Get configuration from task
         server_file = str(task.get_server_file())
         server_root_dir = str(task.get_server_root_directory())
         mock_config = task.resolved_mock_config
+        working_directory = task.get_working_directory() or Path.cwd()
 
         # Connect to MCP server with optional mocks
         async with connect_to_mcp_server(
