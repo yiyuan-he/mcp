@@ -12,15 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Captors for capturing agent behavior and outputs.
-
-Captors extract specific information from agent execution:
-- GitDiffCaptor: Captures file changes via git diff
-- ToolCallsCaptor: Captures tool invocation sequence
-- ConversationCaptor: Captures full conversation history
-- FinalResponseCaptor: Captures agent's final response
-- ToolResultsCaptor: Captures tool execution results
-"""
+"""Captors for extracting data from agent execution."""
 
 from .process_executor import ProcessExecutor, SubprocessExecutor
 from abc import ABC, abstractmethod
@@ -29,11 +21,7 @@ from typing import Any, Dict, List
 
 
 class Captor(ABC):
-    """Base class for capturing agent outputs.
-
-    Captors are responsible for extracting specific information
-    from agent execution for later validation.
-    """
+    """Base class for capturing agent outputs."""
 
     @abstractmethod
     def capture(
@@ -44,29 +32,20 @@ class Captor(ABC):
     ) -> Dict[str, Any]:
         """Capture output from agent execution.
 
-        Args:
-            messages: Conversation history from agent loop
-            metrics_tracker: Metrics tracker instance
-            project_root: Project root directory
-
-        Returns:
-            Dictionary containing captured data
+        Returns dictionary with captured data.
         """
         pass
 
 
 class GitDiffCaptor(Captor):
-    """Captures git diff of file changes made by agent.
-
-    Useful for validating code modification tasks.
-    """
+    """Captures git diff of file changes made by agent."""
 
     def __init__(self, git_paths: List[str], process_executor: ProcessExecutor = None):
         """Initialize GitDiffCaptor.
 
         Args:
-            git_paths: List of paths (relative to mcp_repo_root) to capture git diff for
-            process_executor: Optional ProcessExecutor instance. If not provided, uses SubprocessExecutor.
+            git_paths: Paths relative to project root to capture git diff for
+            process_executor: ProcessExecutor instance (default: SubprocessExecutor)
         """
         self.git_paths = git_paths
         self.process_executor = process_executor if process_executor is not None else SubprocessExecutor()
@@ -77,16 +56,7 @@ class GitDiffCaptor(Captor):
         metrics_tracker: Any,
         project_root: Path,
     ) -> Dict[str, Any]:
-        """Capture git diff.
-
-        Args:
-            messages: Conversation history (unused)
-            metrics_tracker: Metrics tracker (unused)
-            project_root: MCP repository root (combined with git_paths to get full paths)
-
-        Returns:
-            Dictionary with 'git_diff' key containing diff string
-        """
+        """Capture git diff for configured paths."""
         try:
             # Build full paths from mcp_repo_root + git_paths
             full_paths = [str(project_root / path) for path in self.git_paths]
@@ -102,10 +72,7 @@ class GitDiffCaptor(Captor):
 
 
 class ToolCallsCaptor(Captor):
-    """Captures sequence of tool calls made by agent.
-
-    Useful for validating workflow and tool usage patterns.
-    """
+    """Captures sequence of tool calls made by agent."""
 
     def capture(
         self,
@@ -113,16 +80,7 @@ class ToolCallsCaptor(Captor):
         metrics_tracker: Any,
         project_root: Path,
     ) -> Dict[str, Any]:
-        """Capture tool call sequence.
-
-        Args:
-            messages: Conversation history to extract tool calls from
-            metrics_tracker: Metrics tracker (unused)
-            project_root: Project root (unused)
-
-        Returns:
-            Dictionary with 'tool_calls' key containing list of tool calls
-        """
+        """Capture tool call sequence."""
         tool_calls = []
 
         for message in messages:
@@ -141,10 +99,7 @@ class ToolCallsCaptor(Captor):
 
 
 class ConversationCaptor(Captor):
-    """Captures full conversation history.
-
-    Useful for detailed analysis of agent behavior.
-    """
+    """Captures full conversation history."""
 
     def capture(
         self,
@@ -152,25 +107,12 @@ class ConversationCaptor(Captor):
         metrics_tracker: Any,
         project_root: Path,
     ) -> Dict[str, Any]:
-        """Capture full conversation.
-
-        Args:
-            messages: Conversation history
-            metrics_tracker: Metrics tracker (unused)
-            project_root: Project root (unused)
-
-        Returns:
-            Dictionary with 'conversation' key containing messages
-        """
+        """Capture full conversation."""
         return {'conversation': messages}
 
 
 class FinalResponseCaptor(Captor):
-    """Captures agent's final text response.
-
-    Useful for validating data interpretation tasks where the
-    agent should provide a summary or answer.
-    """
+    """Captures agent's final text response."""
 
     def capture(
         self,
@@ -178,16 +120,7 @@ class FinalResponseCaptor(Captor):
         metrics_tracker: Any,
         project_root: Path,
     ) -> Dict[str, Any]:
-        """Capture final response text.
-
-        Args:
-            messages: Conversation history
-            metrics_tracker: Metrics tracker (unused)
-            project_root: Project root (unused)
-
-        Returns:
-            Dictionary with 'final_response' key containing text
-        """
+        """Capture final response text."""
         # Find last assistant message with text content
         for message in reversed(messages):
             if message.get('role') == 'assistant':
@@ -199,10 +132,7 @@ class FinalResponseCaptor(Captor):
 
 
 class ToolResultsCaptor(Captor):
-    """Captures results from tool executions.
-
-    Useful for validating that tools returned expected data.
-    """
+    """Captures results from tool executions."""
 
     def capture(
         self,
@@ -210,16 +140,7 @@ class ToolResultsCaptor(Captor):
         metrics_tracker: Any,
         project_root: Path,
     ) -> Dict[str, Any]:
-        """Capture tool results.
-
-        Args:
-            messages: Conversation history
-            metrics_tracker: Metrics tracker (unused)
-            project_root: Project root (unused)
-
-        Returns:
-            Dictionary with 'tool_results' key containing list of results
-        """
+        """Capture tool results."""
         tool_results = []
 
         for message in messages:

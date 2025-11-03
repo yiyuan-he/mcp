@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Process execution abstraction for evaluation framework.
-
-Provides a pluggable interface for executing shell commands and subprocesses,
-enabling better testability and mocking.
-"""
+"""Process execution abstraction for testability."""
 
 import subprocess
 from abc import ABC, abstractmethod
@@ -26,13 +22,7 @@ from typing import List, Optional
 
 @dataclass
 class ProcessResult:
-    """Result of a subprocess execution.
-
-    Attributes:
-        returncode: Process exit code
-        stdout: Standard output as string
-        stderr: Standard error as string
-    """
+    """Result of a subprocess execution."""
 
     returncode: int
     stdout: str
@@ -40,11 +30,7 @@ class ProcessResult:
 
 
 class ProcessExecutor(ABC):
-    """Abstract base class for process execution.
-
-    Implementations provide different ways to execute shell commands
-    (real subprocess, mocked, sandboxed, etc.).
-    """
+    """Abstract base class for process execution."""
 
     @abstractmethod
     def run(
@@ -53,28 +39,12 @@ class ProcessExecutor(ABC):
         cwd: Optional[str] = None,
         timeout: Optional[int] = None,
     ) -> ProcessResult:
-        """Execute a command and return result.
-
-        Args:
-            cmd: Command and arguments as list (e.g., ['git', 'diff'])
-            cwd: Working directory for command execution
-            timeout: Timeout in seconds (None for no timeout)
-
-        Returns:
-            ProcessResult with returncode, stdout, stderr
-
-        Raises:
-            subprocess.TimeoutExpired: If command times out
-            Exception: If command execution fails
-        """
+        """Execute a command and return result."""
         pass
 
 
 class SubprocessExecutor(ProcessExecutor):
-    """Real subprocess executor using Python's subprocess module.
-
-    This is the default implementation that actually executes commands.
-    """
+    """Real subprocess executor using Python's subprocess module."""
 
     def run(
         self,
@@ -82,20 +52,7 @@ class SubprocessExecutor(ProcessExecutor):
         cwd: Optional[str] = None,
         timeout: Optional[int] = None,
     ) -> ProcessResult:
-        """Execute a command using subprocess.run().
-
-        Args:
-            cmd: Command and arguments as list
-            cwd: Working directory for command execution
-            timeout: Timeout in seconds
-
-        Returns:
-            ProcessResult with returncode, stdout, stderr
-
-        Raises:
-            subprocess.TimeoutExpired: If command times out
-            Exception: If command execution fails
-        """
+        """Execute a command using subprocess.run()."""
         result = subprocess.run(
             cmd,
             cwd=cwd,

@@ -12,16 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Evaluation runner orchestrating task execution and validation.
-
-EvalRunner coordinates:
-- MCP server connection with optional mocking
-- Task execution orchestration
-- Result reporting
-
-Heavy lifting delegated to:
-- PromptExecutor: Executes individual prompts with agent loop, captors, validators
-"""
+"""Evaluation runner orchestrating task execution."""
 
 from .executor import PromptExecutor
 from .mcp_client import connect_to_mcp_server
@@ -33,27 +24,14 @@ from typing import Any, Dict, List
 
 
 class EvalRunner:
-    """Orchestrates evaluation of MCP tools using agent-based testing.
-
-    Example:
-        # Define tasks
-        tasks = [
-            EnablementTask(id='ec2_python', ...),
-            DataInterpretationTask(id='analyze_metrics', ...),
-        ]
-
-        # Run evaluations
-        runner = EvalRunner(tasks)
-        results = await runner.run_all(bedrock_client, verbose=True)
-    """
+    """Orchestrates evaluation of MCP tools using agent-based testing."""
 
     def __init__(self, tasks: List[Task], executor: PromptExecutor = None):
         """Initialize evaluation runner.
 
         Args:
             tasks: List of Task instances to evaluate
-            executor: Optional PromptExecutor instance. If not provided, creates a default instance.
-                     Injecting this dependency allows for easier testing and customization.
+            executor: PromptExecutor instance (default: creates new PromptExecutor)
         """
         self.tasks = tasks
         self.prompt_executor = executor if executor is not None else PromptExecutor()
@@ -64,16 +42,7 @@ class EvalRunner:
         verbose: bool = False,
         mcp_repo_root: Path = None,
     ) -> List[Dict[str, Any]]:
-        """Run all tasks and return results.
-
-        Args:
-            bedrock_client: Boto3 Bedrock Runtime client
-            verbose: Enable verbose logging
-            mcp_repo_root: MCP repository root directory (defaults to cwd)
-
-        Returns:
-            List of result dictionaries, one per task
-        """
+        """Run all tasks and return results."""
         if mcp_repo_root is None:
             mcp_repo_root = Path.cwd()
 
@@ -102,21 +71,7 @@ class EvalRunner:
     ) -> Dict[str, Any]:
         """Run a single task.
 
-        This method orchestrates the high-level flow:
-        1. Connect to MCP server
-        2. Execute the prompt (delegated to PromptExecutor)
-
-        The actual work is delegated to focused helper classes, making this
-        method easy to understand and maintain.
-
-        Args:
-            task: Task instance
-            bedrock_client: Boto3 Bedrock Runtime client
-            verbose: Enable verbose logging
-            working_directory: Working directory for this task
-
-        Returns:
-            Result dictionary with validation and metrics
+        Connects to MCP server and executes prompt via PromptExecutor.
         """
         # Get server configuration from task
         server_file = str(task.get_server_file())
@@ -158,24 +113,12 @@ class EvalRunner:
                 return result
 
     def _create_context(self, working_directory: Path, bedrock_client: Any) -> Dict[str, Any]:
-        """Create context dictionary for task execution.
-
-        Args:
-            working_directory: Working directory for this task
-            bedrock_client: Boto3 Bedrock Runtime client
-
-        Returns:
-            Context dictionary passed to tasks, captors, and validators
-        """
+        """Create context dictionary for task execution."""
         return {
             'working_directory': working_directory,
             'bedrock_client': bedrock_client,
         }
 
     def list_tasks(self) -> List[Dict[str, str]]:
-        """List all configured tasks.
-
-        Returns:
-            List of task info dictionaries
-        """
+        """List all configured tasks."""
         return [{'id': task.id, 'type': type(task).__name__} for task in self.tasks]

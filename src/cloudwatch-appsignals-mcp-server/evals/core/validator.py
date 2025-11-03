@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Validators for evaluating agent outputs.
-
-Validators take captured data and determine if the task
-was completed successfully.
-"""
+"""Validators for evaluating agent outputs."""
 
 import asyncio
 import time
@@ -28,14 +24,11 @@ from typing import Any, Dict, List
 
 
 class Validator(ABC):
-    """Base class for output validation.
-
-    Validators evaluate captured data against task criteria.
-    """
+    """Base class for output validation."""
 
     @abstractmethod
     def get_name(self) -> str:
-        """Return the name of this validator for display purposes."""
+        """Return validator name for display."""
         pass
 
     @abstractmethod
@@ -46,40 +39,25 @@ class Validator(ABC):
     ) -> Dict[str, Any]:
         """Validate captured data against rubric.
 
-        Args:
-            captured_data: Data captured by captors
-            rubric: Validation criteria
-
-        Returns:
-            Dictionary with validation results including:
-            - validator_name: str (name of this validator)
-            - overall_pass: bool
-            - criteria_results: List[dict] with per-criterion results
-            - Additional validator-specific data
+        Returns dict with validator_name, overall_pass, criteria_results.
         """
         pass
 
 
 class LLMJudgeValidator(Validator):
-    """LLM-as-judge validator using pluggable LLM providers.
-
-    Uses an LLM to evaluate captured data against validation rubric.
-    Supports any LLM provider (Bedrock, OpenAI, Anthropic, etc.) via LLMProvider interface.
-    """
+    """LLM-as-judge validator for evaluating captured data against rubric."""
 
     def __init__(self, validation_prompt_template: str, llm_provider: LLMProvider):
         """Initialize LLM judge validator.
 
         Args:
-            validation_prompt_template: Template string for LLM judge prompt.
-                Should have placeholders for: rubric_items, captured_data, num_criteria
+            validation_prompt_template: Template with {rubric_items}, {captured_data}, {num_criteria}
             llm_provider: LLMProvider instance for text generation
         """
         self.validation_prompt_template = validation_prompt_template
         self.llm_provider = llm_provider
 
     def get_name(self) -> str:
-        """Return validator name."""
         return 'LLM Judge'
 
     async def validate(
@@ -87,15 +65,7 @@ class LLMJudgeValidator(Validator):
         captured_data: Dict[str, Any],
         rubric: List[str],
     ) -> Dict[str, Any]:
-        """Validate using LLM as judge.
-
-        Args:
-            captured_data: Data captured by captors
-            rubric: Validation criteria
-
-        Returns:
-            Dictionary with validation results
-        """
+        """Validate using LLM as judge."""
         logger.info('Running LLM-as-judge validation...')
 
         # Format rubric
@@ -140,7 +110,7 @@ class LLMJudgeValidator(Validator):
             }
 
     def _format_captured_data(self, captured_data: Dict[str, Any]) -> str:
-        """Format captured data for inclusion in prompt."""
+        """Format captured data for LLM prompt."""
         sections = []
 
         # Git diff
@@ -173,17 +143,7 @@ class LLMJudgeValidator(Validator):
     def _parse_llm_response(self, response_text: str, rubric: List[str]) -> List[Dict[str, Any]]:
         """Parse LLM response into structured criteria results.
 
-        Expected format:
-        1. [PASS] Reasoning for first criterion
-        2. [FAIL] Reasoning for second criterion
-        ...
-
-        Args:
-            response_text: Raw LLM response text
-            rubric: List of criteria to validate against
-
-        Returns:
-            List of criterion results with status and reasoning
+        Expected format: "1. [PASS] Reasoning" or "1. [FAIL] Reasoning"
         """
         criteria_results = []
         lines = response_text.strip().split('\n')
@@ -243,10 +203,7 @@ class LLMJudgeValidator(Validator):
 
 
 class BuildValidator(Validator):
-    """Validator that runs build commands.
-
-    Executes a build command and validates based on exit code.
-    """
+    """Validator that runs build commands and checks exit code."""
 
     def __init__(
         self,
@@ -257,7 +214,7 @@ class BuildValidator(Validator):
         """Initialize build validator.
 
         Args:
-            command: Build command to execute (e.g., 'npm install && npm run build')
+            command: Build command to execute
             working_dir: Directory to run command in
             timeout: Command timeout in seconds
         """
@@ -266,7 +223,6 @@ class BuildValidator(Validator):
         self.timeout = timeout
 
     def get_name(self) -> str:
-        """Return validator name."""
         return 'Build'
 
     async def validate(
@@ -274,15 +230,7 @@ class BuildValidator(Validator):
         captured_data: Dict[str, Any],
         rubric: List[str],
     ) -> Dict[str, Any]:
-        """Validate by running build command.
-
-        Args:
-            captured_data: Captured data (unused)
-            rubric: Validation criteria (unused)
-
-        Returns:
-            Dictionary with build validation results
-        """
+        """Validate by running build command."""
         # Run build command
         logger.info(f'Running build command: {self.command}')
         try:

@@ -12,17 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Service investigation tasks for Application Signals MCP evaluation.
-
-Demonstrates how to evaluate complex investigative workflows where the agent must:
-1. Call audit tools to gather comprehensive evidence
-2. Interpret findings from multiple auditors (slo, operation_metric, trace, dependency_metric)
-3. Perform root cause analysis from audit results
-4. Provide actionable insights based on findings
-
-These tasks range from simple health checks to complex multi-auditor investigations,
-showcasing the eval framework's ability to handle read-only investigative workflows.
-"""
+"""Service investigation tasks for Application Signals MCP evaluation."""
 
 from evals.core import FinalResponseCaptor, LLMJudgeValidator, Task, ToolCallsCaptor
 from evals.core.constants import DATA_INTERPRETATION_VALIDATION_PROMPT
@@ -44,19 +34,7 @@ FIXTURES_DIR = Path(__file__).parent / 'fixtures'
 
 
 class ServiceInvestigationTask(Task):
-    """Task for evaluating service health investigation and root cause analysis.
-
-    This task type evaluates the agent's ability to:
-    - Use audit_services() tool effectively with appropriate auditor selection
-    - Navigate complex observability scenarios
-    - Interpret findings from multiple auditors (slo, operation_metric, trace, dependency_metric)
-    - Correlate data across metrics, traces, logs, and dependencies
-    - Identify root causes from audit findings
-    - Provide actionable recommendations
-
-    Unlike code modification tasks, these are read-only investigations that test
-    the agent's analytical and interpretive capabilities.
-    """
+    """Task for evaluating service health investigation and root cause analysis."""
 
     def __init__(
         self,
@@ -72,12 +50,12 @@ class ServiceInvestigationTask(Task):
 
         Args:
             id: Task identifier
-            prompt: Investigation prompt (e.g., "Why is pet clinic having issues?")
-            expected_tools: Expected MCP tools to be called (typically ['audit_services'])
+            prompt: Investigation prompt
+            expected_tools: Expected MCP tools to be called
             validation_rubric: Criteria for validating investigation quality
-            mock_config: Mock configuration for AWS APIs (optional)
-            fixtures_dir: Base directory for fixture files (required if using fixture references)
-            max_turns: Maximum conversation turns (default: 15 for complex investigations)
+            mock_config: Mock configuration for AWS APIs
+            fixtures_dir: Base directory for fixture files
+            max_turns: Maximum conversation turns
         """
         super().__init__(
             id=id,
@@ -90,14 +68,7 @@ class ServiceInvestigationTask(Task):
         self.validation_rubric = validation_rubric
 
     def get_prompt(self, context: dict) -> str:
-        """Return the investigation prompt.
-
-        Args:
-            context: Runtime context (unused)
-
-        Returns:
-            Investigation prompt string
-        """
+        """Return the investigation prompt."""
         return self.prompt_text
 
     @property
@@ -106,34 +77,14 @@ class ServiceInvestigationTask(Task):
         return self.validation_rubric
 
     def get_captors(self, context: dict):
-        """Return captors for this task.
-
-        For investigation tasks, we capture:
-        - Tool calls: To verify investigative workflow
-        - Final response: To validate conclusions and recommendations
-
-        Args:
-            context: Runtime context (unused)
-
-        Returns:
-            List of captors
-        """
+        """Return captors for this task."""
         return [
-            ToolCallsCaptor(),  # Capture investigation workflow
-            FinalResponseCaptor(),  # Capture findings and recommendations
+            ToolCallsCaptor(),
+            FinalResponseCaptor(),
         ]
 
     def get_validators(self, context: dict):
-        """Return validators for this task.
-
-        Uses LLM judge to evaluate investigation quality.
-
-        Args:
-            context: Runtime context with 'bedrock_client' key
-
-        Returns:
-            List with single LLMJudgeValidator
-        """
+        """Return validators for this task."""
         from evals.core.llm_provider import BedrockLLMProvider
 
         bedrock_client = context['bedrock_client']
@@ -147,11 +98,9 @@ class ServiceInvestigationTask(Task):
         ]
 
     def get_server_file(self) -> Path:
-        """Return MCP server file path."""
         return SERVER_PATH
 
     def get_server_root_directory(self) -> Path:
-        """Return MCP server root directory."""
         return SERVER_CWD
 
 

@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Base Task class for MCP evaluations.
-
-Tasks define what the agent should accomplish, validation criteria,
-and optional mock configurations.
-"""
+"""Base Task class for MCP evaluations."""
 
 from .fixture_resolver import FixtureResolver
 from .process_executor import ProcessExecutor, SubprocessExecutor
@@ -30,20 +26,15 @@ from typing import Any, Dict, List, Optional
 class Task(ABC):
     """Base class for evaluation tasks.
 
-    Subclasses must implement get_prompts() and rubric property to define
-    the task prompt(s) and validation criteria.
-
-    Context dictionary contains runtime information:
-        - working_directory: Path to working directory for this task
-        - bedrock_client: Boto3 Bedrock client (for validators)
+    Subclasses implement get_prompt() and rubric to define the task prompt and validation criteria.
 
     Attributes:
         id: Unique identifier for the task
-        max_turns: Maximum conversation turns allowed (default: 20)
-        expected_tools: List of MCP tool names expected to be called (for hit rate metric)
-        mock_config: Optional mock configuration for AWS APIs or other external services (raw, with relative paths)
-        fixtures_dir: Base directory for resolving relative fixture paths (None = no path resolution)
-        process_executor: ProcessExecutor for running shell commands (None = uses default SubprocessExecutor)
+        max_turns: Maximum conversation turns allowed
+        expected_tools: MCP tool names expected to be called (for hit rate metric)
+        mock_config: Mock configuration for AWS APIs (relative paths, resolved via fixtures_dir)
+        fixtures_dir: Base directory for resolving fixture paths
+        process_executor: ProcessExecutor for shell commands
     """
 
     id: str
@@ -65,124 +56,36 @@ class Task(ABC):
         """Return task prompt to send to the agent.
 
         Args:
-            context: Runtime context dictionary with keys:
-                - working_directory: Path to working directory for this task
-                - bedrock_client: Boto3 Bedrock client
+            context: Runtime context (working_directory, bedrock_client)
 
         Returns:
             Prompt string to send to agent
-
-        Example:
-            # Simple prompt (ignores context)
-            def get_prompt(self, context):
-                return "List services with high latency"
-
-            # Complex prompt (uses context for paths)
-            def get_prompt(self, context):
-                working_dir = context['working_directory']
-                path = working_dir / self.iac_dir
-                return f"Enable Application Signals at {path}"
         """
         pass
 
     @property
     @abstractmethod
     def rubric(self) -> list[str]:
-        """Return validation criteria for this task.
-
-        Returns:
-            List of validation criteria strings
-
-        Example:
-            return [
-                "Code compiles without errors",
-                "Application Signals is enabled correctly",
-                "All required configuration files are created"
-            ]
-        """
+        """Return validation criteria for this task."""
         pass
 
     def get_captors(self, context: Dict[str, Any]) -> List[Any]:
-        """Return captors for this task.
-
-        Override this method to specify what data to capture from agent execution.
-
-        Args:
-            context: Runtime context dictionary
-
-        Returns:
-            List of Captor instances
-
-        Example:
-            from framework import GitDiffCaptor
-            return [GitDiffCaptor(git_paths=self.paths)]
-        """
+        """Return captors for this task. Override to specify data to capture."""
         return []
 
     def get_validators(self, context: Dict[str, Any]) -> List[Any]:
-        """Return validators for this task.
-
-        Override this method to specify how to validate task completion.
-
-        Args:
-            context: Runtime context dictionary with keys:
-                - working_directory: Path to working directory for this task
-                - bedrock_client: Boto3 Bedrock client
-
-        Returns:
-            List of Validator instances
-
-        Example:
-            from evals.core import BuildValidator, LLMJudgeValidator
-            return [
-                BuildValidator(command="npm run build", working_dir=...),
-                LLMJudgeValidator(validation_prompt_template=...)
-            ]
-        """
+        """Return validators for this task. Override to specify validation."""
         return []
 
     @property
     def resolved_mock_config(self) -> Optional[dict]:
-        """Mock configuration with all fixture paths resolved to absolute paths.
+        """Mock configuration with fixture paths resolved to absolute paths.
 
-        This property automatically resolves relative fixture file paths to absolute
-        paths based on the fixtures_dir. This is what should be passed to the
-        mocking system at runtime.
-
-        Returns:
-            Mock configuration dictionary with resolved absolute paths, or None
+        Converts relative fixture paths (e.g., 'services.json') to absolute paths
+        based on fixtures_dir (e.g., '/fixtures/services.json').
 
         Raises:
-            ValueError: If mock_config contains fixture file references but fixtures_dir is not specified
-
-        Example:
-            # Task definition with relative paths:
-            task = Task(
-                id='my_task',
-                fixtures_dir=Path('/project/fixtures'),
-                mock_config={
-                    'boto3': {
-                        'application-signals': {
-                            'list_services': [
-                                {'request': {}, 'response': 'services.json'}
-                            ]
-                        }
-                    }
-                }
-            )
-
-            # Access resolved mock config:
-            task.resolved_mock_config
-            # Returns:
-            # {
-            #     'boto3': {
-            #         'application-signals': {
-            #             'list_services': [
-            #                 {'request': {}, 'response': '/project/fixtures/services.json'}
-            #             ]
-            #         }
-            #     }
-            # }
+            ValueError: If mock_config has fixture references but no fixtures_dir
         """
         if not self.mock_config:
             return None
@@ -201,62 +104,22 @@ class Task(ABC):
         return FixtureResolver.resolve_mock_config(self.mock_config, self.fixtures_dir)
 
     def get_working_directory(self) -> Optional[Path]:
-        """Return the working directory for this task.
-
-        Override this method to specify a working directory where the task
-        should operate (e.g., path to samples/ for enablement tasks).
-
-        Returns:
-            Path to working directory, or None to use current directory
-
-        Example:
-            def get_working_directory(self):
-                # Return path to samples directory for enablement tasks
-                return Path(__file__).parent.parent.parent.parent / 'samples'
-        """
+        """Return working directory for this task. None uses current directory."""
         return None
 
     @abstractmethod
     def get_server_file(self) -> Path:
-        """Return the path to the MCP server file.
-
-        Returns:
-            Path to server.py file
-
-        Example:
-            def get_server_file(self):
-                return Path(__file__).parent.parent.parent / 'awslabs' / 'cloudwatch_appsignals_mcp_server' / 'server.py'
-        """
+        """Return path to the MCP server file."""
         pass
 
     @abstractmethod
     def get_server_root_directory(self) -> Path:
-        """Return the root directory of the MCP server.
-
-        This is the directory where the server should run from (where its imports work).
-
-        Returns:
-            Path to server root directory
-
-        Example:
-            def get_server_root_directory(self):
-                # For server at: cloudwatch-appsignals-mcp-server/awslabs/cloudwatch_appsignals_mcp_server/server.py
-                # Return: cloudwatch-appsignals-mcp-server/ directory
-                return Path(__file__).parent.parent.parent
-        """
+        """Return root directory of the MCP server (where imports work)."""
         pass
 
     def cleanup(self, context: Dict[str, Any]) -> None:
-        """Clean up after task execution.
-
-        Override this method to perform cleanup (e.g., reset git state).
-
-        Args:
-            context: Runtime context dictionary with keys:
-                - working_directory: Path to working directory
-        """
+        """Clean up after task execution. Override to perform cleanup."""
         pass
 
     def __str__(self) -> str:
-        """String representation of the task."""
         return f'Task({self.id})'

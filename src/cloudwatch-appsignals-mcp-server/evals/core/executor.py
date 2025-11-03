@@ -12,20 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Prompt execution logic extracted from EvalRunner.
-
-This module implements the Single Responsibility Principle (SRP) by extracting
-the prompt execution logic into a focused class.
-
-Before: EvalRunner.run_task() did everything (100+ lines, 8 responsibilities)
-After: PromptExecutor handles just prompt execution (single responsibility)
-
-Benefits:
-- Easier to test (mock just the agent loop, captors, validators)
-- Easier to understand (one clear purpose)
-- Easier to modify (change execution logic without touching orchestration)
-- Reusable (can use PromptExecutor in other contexts)
-"""
+"""Executes prompts with agent loop, captors, and validators."""
 
 from .agent import run_agent_loop
 from .metrics import MetricsTracker
@@ -37,18 +24,7 @@ from typing import Any, Dict
 
 
 class PromptExecutor:
-    """Executes a single prompt and gathers its results.
-
-    Responsibilities:
-    1. Run agent loop for the prompt
-    2. Execute captors to extract data
-    3. Execute validators to check success
-    4. Calculate metrics
-    5. Aggregate into a prompt result dictionary
-
-    This class follows SRP: it has ONE reason to change - if the way we
-    execute and validate a single prompt changes.
-    """
+    """Executes a single prompt through agent loop and validates results."""
 
     async def execute_prompt(
         self,
@@ -61,21 +37,14 @@ class PromptExecutor:
         """Execute a prompt and gather all results.
 
         Args:
-            prompt: The prompt text to send to the agent
-            task: The Task instance being evaluated
+            prompt: Prompt text to send to the agent
+            task: Task instance being evaluated
             session: MCP ClientSession for tool calls
             tools_response: Response from session.list_tools()
             context: Context dictionary with working_directory, bedrock_client
 
         Returns:
-            Dictionary with execution results:
-            {
-                'prompt': str,
-                'success': bool,
-                'validation_results': List[Dict],
-                'metrics': Dict,
-                'captured_data': Dict
-            }
+            Result dictionary with success, validation_results, metrics, captured_data
         """
         logger.debug('Running eval for task')
 
@@ -126,19 +95,7 @@ class PromptExecutor:
         working_directory: Path,
         prompt: str,
     ) -> Dict[str, Any]:
-        """Execute all captors and gather captured data.
-
-        Args:
-            task: Task instance
-            context: Context dictionary
-            messages: Conversation messages from agent loop
-            metrics_tracker: Metrics tracker instance
-            working_directory: Working directory for this task
-            prompt: Prompt text
-
-        Returns:
-            Dictionary with captured data from all captors
-        """
+        """Execute all captors and gather captured data."""
         captured_data = {'prompt': prompt}
         captors = task.get_captors(context)
 
@@ -154,16 +111,7 @@ class PromptExecutor:
         context: Dict[str, Any],
         captured_data: Dict[str, Any],
     ) -> list:
-        """Execute all validators and gather validation results.
-
-        Args:
-            task: Task instance
-            context: Context dictionary
-            captured_data: Data captured by captors
-
-        Returns:
-            List of validation result dictionaries
-        """
+        """Execute all validators and gather validation results."""
         validation_results = []
         validators = task.get_validators(context)
 

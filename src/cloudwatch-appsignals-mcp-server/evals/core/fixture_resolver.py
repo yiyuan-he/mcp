@@ -12,23 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Fixture path resolution utility for evaluation framework.
-
-Handles conversion of relative fixture file paths to absolute paths
-in mock configurations.
-"""
+"""Fixture path resolution for mock configurations."""
 
 from pathlib import Path
 from typing import Any, Dict
 
 
 class FixtureResolver:
-    """Resolves fixture file paths in mock configurations.
-
-    Converts relative fixture paths to absolute paths based on a fixtures directory.
-    This enables mock configurations to use relative paths like 'services.json'
-    which get resolved to absolute paths like '/path/to/fixtures/services.json'.
-    """
+    """Resolves fixture file paths in mock configurations."""
 
     @staticmethod
     def resolve_mock_config(
@@ -36,53 +27,14 @@ class FixtureResolver:
     ) -> Dict[str, Any]:
         """Resolve all fixture paths in a mock configuration.
 
-        Args:
-            mock_config: Mock configuration dictionary with relative fixture paths
-            fixtures_dir: Base directory for resolving fixture file paths
-
-        Returns:
-            Mock configuration with all relative paths resolved to absolute paths
-
-        Example:
-            mock_config = {
-                'boto3': {
-                    'application-signals': {
-                        'list_services': [
-                            {'request': {}, 'response': 'services.json'}
-                        ]
-                    }
-                }
-            }
-            resolved = FixtureResolver.resolve_mock_config(
-                mock_config,
-                Path('/fixtures')
-            )
-            # Result: 'response' becomes '/fixtures/services.json'
+        Converts relative paths (e.g., 'services.json') to absolute paths
+        (e.g., '/fixtures/services.json') based on fixtures_dir.
         """
         return FixtureResolver._resolve_fixture_paths(mock_config, fixtures_dir)
 
     @staticmethod
     def has_fixture_references(mock_config: Dict[str, Any]) -> bool:
-        """Check if mock configuration contains relative fixture file references.
-
-        Args:
-            mock_config: Mock configuration dictionary
-
-        Returns:
-            True if any value looks like a relative fixture file path
-
-        Example:
-            has_refs = FixtureResolver.has_fixture_references({
-                'boto3': {
-                    'cloudwatch': {
-                        'get_metric_data': [
-                            {'request': {}, 'response': 'metrics.json'}
-                        ]
-                    }
-                }
-            })
-            # Returns: True
-        """
+        """Check if mock configuration contains relative fixture file references."""
         for key, value in mock_config.items():
             if isinstance(value, dict):
                 if FixtureResolver.has_fixture_references(value):
@@ -107,15 +59,7 @@ class FixtureResolver:
     def _resolve_fixture_paths(
         mock_config: Dict[str, Any], fixtures_dir: Path
     ) -> Dict[str, Any]:
-        """Recursively resolve fixture file paths to absolute paths.
-
-        Args:
-            mock_config: Mock configuration dictionary
-            fixtures_dir: Base directory for fixture files
-
-        Returns:
-            Mock configuration with resolved paths
-        """
+        """Recursively resolve fixture file paths to absolute paths."""
         resolved = {}
         for key, value in mock_config.items():
             if isinstance(value, dict):
@@ -136,18 +80,7 @@ class FixtureResolver:
     def _resolve_request_response_pair(
         pair: Dict[str, Any], fixtures_dir: Path
     ) -> Dict[str, Any]:
-        """Resolve a request/response pair.
-
-        Args:
-            pair: Dict with 'request' and 'response' keys
-            fixtures_dir: Base directory for fixture files
-
-        Returns:
-            Resolved pair with absolute response path
-
-        Raises:
-            ValueError: If pair doesn't have expected structure
-        """
+        """Resolve a request/response pair, converting relative response path to absolute."""
         if not isinstance(pair, dict) or 'request' not in pair or 'response' not in pair:
             raise ValueError(
                 f"Expected request/response pair dict with 'request' and 'response' keys, got: {pair}"
