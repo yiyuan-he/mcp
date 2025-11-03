@@ -18,6 +18,7 @@ Tasks define what the agent should accomplish, validation criteria,
 and optional mock configurations.
 """
 
+from .process_executor import ProcessExecutor, SubprocessExecutor
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,6 +42,7 @@ class Task(ABC):
         expected_tools: List of MCP tool names expected to be called (for hit rate metric)
         mock_config: Optional mock configuration for AWS APIs or other external services (raw, with relative paths)
         fixtures_dir: Base directory for resolving relative fixture paths (None = no path resolution)
+        process_executor: ProcessExecutor for running shell commands (None = uses default SubprocessExecutor)
     """
 
     id: str
@@ -48,11 +50,14 @@ class Task(ABC):
     expected_tools: List[str] = None
     mock_config: Optional[Dict[str, Any]] = None
     fixtures_dir: Optional[Path] = None
+    process_executor: Optional[ProcessExecutor] = None
 
     def __post_init__(self):
-        """Initialize expected_tools to empty list if None."""
+        """Initialize default values."""
         if self.expected_tools is None:
             self.expected_tools = []
+        if self.process_executor is None:
+            self.process_executor = SubprocessExecutor()
 
     @abstractmethod
     def get_prompt(self, context: Dict[str, Any]) -> str:

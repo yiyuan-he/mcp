@@ -22,7 +22,7 @@ Captors extract specific information from agent execution:
 - ToolResultsCaptor: Captures tool execution results
 """
 
-import subprocess
+from .process_executor import ProcessExecutor, SubprocessExecutor
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List
@@ -61,13 +61,15 @@ class GitDiffCaptor(Captor):
     Useful for validating code modification tasks.
     """
 
-    def __init__(self, git_paths: List[str]):
+    def __init__(self, git_paths: List[str], process_executor: ProcessExecutor = None):
         """Initialize GitDiffCaptor.
 
         Args:
             git_paths: List of paths (relative to mcp_repo_root) to capture git diff for
+            process_executor: Optional ProcessExecutor instance. If not provided, uses SubprocessExecutor.
         """
         self.git_paths = git_paths
+        self.process_executor = process_executor if process_executor is not None else SubprocessExecutor()
 
     def capture(
         self,
@@ -90,10 +92,8 @@ class GitDiffCaptor(Captor):
             full_paths = [str(project_root / path) for path in self.git_paths]
 
             # Run git diff with path arguments to limit changes to specified paths
-            result = subprocess.run(
+            result = self.process_executor.run(
                 ['git', 'diff', '--'] + full_paths,
-                capture_output=True,
-                text=True,
                 timeout=10,
             )
             return {'git_diff': result.stdout}

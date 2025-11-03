@@ -18,7 +18,6 @@ Evaluates whether the AI agent can use the get_enablement_guide tool
 to enable Application Signals monitoring on various platforms.
 """
 
-import subprocess
 from evals.core import (
     BuildValidator,
     GitDiffCaptor,
@@ -211,14 +210,12 @@ My application directory is: {app_abs_path}"""
             for rel_path in self.git_paths:
                 full_path = str(working_directory / rel_path)
                 logger.debug(f'Cleaning path: {full_path}')
-                subprocess.run(
+                self.process_executor.run(
                     ['git', 'checkout', 'HEAD', '--', full_path],
-                    capture_output=True,
                     timeout=10,
                 )
-                subprocess.run(
+                self.process_executor.run(
                     ['git', 'clean', '-fd', full_path],
-                    capture_output=True,
                     timeout=10,
                 )
             logger.debug(f'Reset git state for: {", ".join(self.git_paths)}')
