@@ -108,7 +108,6 @@ class ServiceInvestigationTask(Task):
 
 # Task definitions
 TASKS = [
-    # Complex: Multi-auditor root cause analysis - DynamoDB throttling
     ServiceInvestigationTask(
         id='petclinic_scheduling_rca',
         prompt="""The PetClinic application is experiencing issues with the scheduling availability feature.
@@ -142,9 +141,8 @@ Users are reporting that they cannot book appointments. Can you investigate what
                 }
             }
         },
-        max_turns=20,  # Complex investigation may need more turns
+        max_turns=20,
     ),
-    # Multi-tool: SLO breach investigation with detailed SLO inspection
     ServiceInvestigationTask(
         id='slo_breach_detailed_investigation',
         prompt="""I noticed some SLO alerts for CheckoutService. Can you investigate which SLOs are breached
