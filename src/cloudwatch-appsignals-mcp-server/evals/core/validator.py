@@ -20,7 +20,7 @@ was completed successfully.
 
 import asyncio
 import time
-from .constants import DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE
+from .llm_provider import LLMProvider
 from abc import ABC, abstractmethod
 from loguru import logger
 from pathlib import Path
@@ -43,14 +43,12 @@ class Validator(ABC):
         self,
         captured_data: Dict[str, Any],
         rubric: List[str],
-        bedrock_client: Any = None,
     ) -> Dict[str, Any]:
         """Validate captured data against rubric.
 
         Args:
             captured_data: Data captured by captors
             rubric: Validation criteria
-            bedrock_client: Boto3 Bedrock client (for LLM validators)
 
         Returns:
             Dictionary with validation results including:
@@ -63,19 +61,22 @@ class Validator(ABC):
 
 
 class LLMJudgeValidator(Validator):
-    """LLM-as-judge validator using Bedrock.
+    """LLM-as-judge validator using pluggable LLM providers.
 
     Uses an LLM to evaluate captured data against validation rubric.
+    Supports any LLM provider (Bedrock, OpenAI, Anthropic, etc.) via LLMProvider interface.
     """
 
-    def __init__(self, validation_prompt_template: str):
+    def __init__(self, validation_prompt_template: str, llm_provider: LLMProvider):
         """Initialize LLM judge validator.
 
         Args:
             validation_prompt_template: Template string for LLM judge prompt.
                 Should have placeholders for: rubric_items, captured_data, num_criteria
+            llm_provider: LLMProvider instance for text generation
         """
         self.validation_prompt_template = validation_prompt_template
+        self.llm_provider = llm_provider
 
     def get_name(self) -> str:
         """Return validator name."""
@@ -85,21 +86,16 @@ class LLMJudgeValidator(Validator):
         self,
         captured_data: Dict[str, Any],
         rubric: List[str],
-        bedrock_client: Any = None,
     ) -> Dict[str, Any]:
         """Validate using LLM as judge.
 
         Args:
             captured_data: Data captured by captors
             rubric: Validation criteria
-            bedrock_client: Boto3 Bedrock Runtime client (required)
 
         Returns:
             Dictionary with validation results
         """
-        if not bedrock_client:
-            raise ValueError('bedrock_client is required for LLMJudgeValidator')
-
         logger.info('Running LLM-as-judge validation...')
 
         # Format rubric
@@ -118,16 +114,11 @@ class LLMJudgeValidator(Validator):
         try:
             start = time.time()
 
-            response = bedrock_client.converse(
-                modelId=DEFAULT_MODEL_ID,
-                messages=[{'role': 'user', 'content': [{'text': prompt}]}],
-                inferenceConfig={'temperature': DEFAULT_TEMPERATURE},
-            )
+            # Use injected LLM provider
+            response_text = await self.llm_provider.generate(prompt)
 
             elapsed = time.time() - start
             logger.debug(f'LLM validation took {elapsed:.2f}s')
-
-            response_text = response['output']['message']['content'][0]['text']
 
             # Parse response
             criteria_results = self._parse_llm_response(response_text, rubric)
@@ -282,14 +273,12 @@ class BuildValidator(Validator):
         self,
         captured_data: Dict[str, Any],
         rubric: List[str],
-        bedrock_client: Any = None,
     ) -> Dict[str, Any]:
         """Validate by running build command.
 
         Args:
             captured_data: Captured data (unused)
             rubric: Validation criteria (unused)
-            bedrock_client: Bedrock client (unused)
 
         Returns:
             Dictionary with build validation results

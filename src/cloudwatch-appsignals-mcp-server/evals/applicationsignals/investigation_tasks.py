@@ -129,13 +129,21 @@ class ServiceInvestigationTask(Task):
         Uses LLM judge to evaluate investigation quality.
 
         Args:
-            context: Runtime context (unused)
+            context: Runtime context with 'bedrock_client' key
 
         Returns:
             List with single LLMJudgeValidator
         """
+        from evals.core.llm_provider import BedrockLLMProvider
+
+        bedrock_client = context['bedrock_client']
+        llm_provider = BedrockLLMProvider(bedrock_client)
+
         return [
-            LLMJudgeValidator(validation_prompt_template=DATA_INTERPRETATION_VALIDATION_PROMPT)
+            LLMJudgeValidator(
+                validation_prompt_template=DATA_INTERPRETATION_VALIDATION_PROMPT,
+                llm_provider=llm_provider,
+            )
         ]
 
     def get_server_file(self) -> Path:

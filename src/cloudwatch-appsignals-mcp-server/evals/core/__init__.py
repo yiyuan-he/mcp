@@ -20,6 +20,7 @@ from .captor import (
     ToolResultsCaptor,
 )
 from .validator import Validator, LLMJudgeValidator, BuildValidator
+from .llm_provider import LLMProvider, BedrockLLMProvider
 from .runner import EvalRunner
 
 # Mocking system
@@ -47,6 +48,9 @@ __all__ = [
     # Built-in validators
     'LLMJudgeValidator',
     'BuildValidator',
+    # LLM providers
+    'LLMProvider',
+    'BedrockLLMProvider',
     # Mocking
     'MockHandler',
     'Boto3MockHandler',

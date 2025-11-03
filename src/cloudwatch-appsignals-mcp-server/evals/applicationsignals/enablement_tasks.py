@@ -159,14 +159,16 @@ My application directory is: {app_abs_path}"""
         """Return validators for this task.
 
         Args:
-            context: Runtime context with 'working_directory' key
+            context: Runtime context with 'working_directory' and 'bedrock_client' keys
 
         Returns:
             List of validators (BuildValidator and LLMJudgeValidator)
         """
         from evals.core.constants import CODE_MODIFICATION_VALIDATION_PROMPT
+        from evals.core.llm_provider import BedrockLLMProvider
 
         working_directory = context['working_directory']
+        bedrock_client = context['bedrock_client']
         validators = []
 
         # Add build validator if build config provided
@@ -180,9 +182,13 @@ My application directory is: {app_abs_path}"""
                 )
             )
 
-        # Add LLM judge validator
+        # Add LLM judge validator with Bedrock provider
+        llm_provider = BedrockLLMProvider(bedrock_client)
         validators.append(
-            LLMJudgeValidator(validation_prompt_template=CODE_MODIFICATION_VALIDATION_PROMPT)
+            LLMJudgeValidator(
+                validation_prompt_template=CODE_MODIFICATION_VALIDATION_PROMPT,
+                llm_provider=llm_provider,
+            )
         )
 
         return validators

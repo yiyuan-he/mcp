@@ -101,9 +101,7 @@ class PromptExecutor:
         )
 
         # Step 3: Execute validators
-        validation_results = await self._execute_validators(
-            task, context, captured_data, bedrock_client
-        )
+        validation_results = await self._execute_validators(task, context, captured_data)
 
         # Step 4: Calculate metrics
         metrics = metrics_tracker.get_metrics(expected_tools=task.expected_tools)
@@ -155,7 +153,6 @@ class PromptExecutor:
         task: Task,
         context: Dict[str, Any],
         captured_data: Dict[str, Any],
-        bedrock_client: Any,
     ) -> list:
         """Execute all validators and gather validation results.
 
@@ -163,7 +160,6 @@ class PromptExecutor:
             task: Task instance
             context: Context dictionary
             captured_data: Data captured by captors
-            bedrock_client: Bedrock client for LLM validators
 
         Returns:
             List of validation result dictionaries
@@ -172,9 +168,7 @@ class PromptExecutor:
         validators = task.get_validators(context)
 
         for validator in validators:
-            validation_result = await validator.validate(
-                captured_data, task.rubric, bedrock_client
-            )
+            validation_result = await validator.validate(captured_data, task.rubric)
             validation_results.append(validation_result)
 
         return validation_results
