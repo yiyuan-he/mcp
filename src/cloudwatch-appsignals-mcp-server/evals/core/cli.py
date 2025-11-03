@@ -177,10 +177,18 @@ async def main():
     args = parser.parse_args()
 
     if args.verbose:
-        logger.add(sys.stderr, level='DEBUG', format='<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{message}</level>')
+        logger.add(
+            sys.stderr,
+            level='DEBUG',
+            format='<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{message}</level>',
+        )
     else:
         # Without -v: Show only WARNING+ from all modules (user-facing output uses print())
-        logger.add(sys.stderr, level='WARNING', format='<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{message}</level>')
+        logger.add(
+            sys.stderr,
+            level='WARNING',
+            format='<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{message}</level>',
+        )
 
     # Resolve task directory (relative to evals/, which is parent of framework/)
     evals_dir = Path(__file__).parent.parent

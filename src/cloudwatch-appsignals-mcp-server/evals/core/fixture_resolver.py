@@ -22,9 +22,7 @@ class FixtureResolver:
     """Resolves fixture file paths in mock configurations."""
 
     @staticmethod
-    def resolve_mock_config(
-        mock_config: Dict[str, Any], fixtures_dir: Path
-    ) -> Dict[str, Any]:
+    def resolve_mock_config(mock_config: Dict[str, Any], fixtures_dir: Path) -> Dict[str, Any]:
         """Resolve all fixture paths in a mock configuration.
 
         Converts relative paths (e.g., 'services.json') to absolute paths
@@ -56,9 +54,7 @@ class FixtureResolver:
         return False
 
     @staticmethod
-    def _resolve_fixture_paths(
-        mock_config: Dict[str, Any], fixtures_dir: Path
-    ) -> Dict[str, Any]:
+    def _resolve_fixture_paths(mock_config: Dict[str, Any], fixtures_dir: Path) -> Dict[str, Any]:
         """Recursively resolve fixture file paths to absolute paths."""
         resolved = {}
         for key, value in mock_config.items():
@@ -77,9 +73,7 @@ class FixtureResolver:
         return resolved
 
     @staticmethod
-    def _resolve_request_response_pair(
-        pair: Dict[str, Any], fixtures_dir: Path
-    ) -> Dict[str, Any]:
+    def _resolve_request_response_pair(pair: Dict[str, Any], fixtures_dir: Path) -> Dict[str, Any]:
         """Resolve a request/response pair, converting relative response path to absolute."""
         if not isinstance(pair, dict) or 'request' not in pair or 'response' not in pair:
             raise ValueError(

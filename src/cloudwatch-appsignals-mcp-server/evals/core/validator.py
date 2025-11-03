@@ -58,6 +58,7 @@ class LLMJudgeValidator(Validator):
         self.llm_provider = llm_provider
 
     def get_name(self) -> str:
+        """Return validator name."""
         return 'LLM Judge'
 
     async def validate(
@@ -160,12 +161,12 @@ class LLMJudgeValidator(Validator):
                 # Extract reasoning after [PASS] marker (case-insensitive split)
                 # Find the position of [PASS] and extract everything after it
                 pass_idx = line_upper.find('[PASS]')
-                reasoning = line[pass_idx + 6:].strip()
+                reasoning = line[pass_idx + 6 :].strip()
             elif '[FAIL]' in line_upper:
                 status = 'FAIL'
                 # Extract reasoning after [FAIL] marker (case-insensitive split)
                 fail_idx = line_upper.find('[FAIL]')
-                reasoning = line[fail_idx + 6:].strip()
+                reasoning = line[fail_idx + 6 :].strip()
             else:
                 # Line doesn't have a status marker, skip it
                 continue
@@ -223,6 +224,7 @@ class BuildValidator(Validator):
         self.timeout = timeout
 
     def get_name(self) -> str:
+        """Return validator name."""
         return 'Build'
 
     async def validate(
@@ -253,9 +255,7 @@ class BuildValidator(Validator):
             except asyncio.TimeoutError:
                 process.kill()
                 await process.wait()
-                raise TimeoutError(
-                    f'Build command timed out after {self.timeout} seconds'
-                )
+                raise TimeoutError(f'Build command timed out after {self.timeout} seconds')
 
             result = {
                 'exit_code': exit_code,

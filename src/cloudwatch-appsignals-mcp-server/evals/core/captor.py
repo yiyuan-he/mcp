@@ -48,7 +48,9 @@ class GitDiffCaptor(Captor):
             process_executor: ProcessExecutor instance (default: SubprocessExecutor)
         """
         self.git_paths = git_paths
-        self.process_executor = process_executor if process_executor is not None else SubprocessExecutor()
+        self.process_executor = (
+            process_executor if process_executor is not None else SubprocessExecutor()
+        )
 
     def capture(
         self,

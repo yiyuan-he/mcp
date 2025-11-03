@@ -122,4 +122,5 @@ class Task(ABC):
         pass
 
     def __str__(self) -> str:
+        """Return string representation of the task."""
         return f'Task({self.id})'

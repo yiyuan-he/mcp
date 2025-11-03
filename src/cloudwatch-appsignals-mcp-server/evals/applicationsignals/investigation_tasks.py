@@ -98,9 +98,11 @@ class ServiceInvestigationTask(Task):
         ]
 
     def get_server_file(self) -> Path:
+        """Return MCP server file path."""
         return SERVER_PATH
 
     def get_server_root_directory(self) -> Path:
+        """Return MCP server root directory."""
         return SERVER_CWD
 
 
