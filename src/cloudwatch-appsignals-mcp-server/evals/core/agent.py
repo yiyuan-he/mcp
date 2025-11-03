@@ -41,7 +41,6 @@ async def execute_tool(
         if tool_name == 'list_files':
             dir_path = project_root / tool_input['path']
 
-            # Validate directory exists and is accessible
             if not dir_path.exists():
                 raise FileNotFoundError(f'Directory not found: {tool_input["path"]}')
             if not dir_path.is_dir():
@@ -58,33 +57,28 @@ async def execute_tool(
         elif tool_name == 'read_file':
             file_path = project_root / tool_input['path']
 
-            # Validate file exists and is readable
             if not file_path.exists():
                 raise FileNotFoundError(f'File not found: {tool_input["path"]}')
             if not file_path.is_file():
                 raise IsADirectoryError(f'Path is a directory, not a file: {tool_input["path"]}')
 
             try:
-                # Use error handling for encoding issues
                 content = file_path.read_text(encoding='utf-8', errors='replace')
                 result = {'content': [{'text': content}]}
             except PermissionError:
                 raise PermissionError(f'Permission denied reading file: {tool_input["path"]}')
             except UnicodeDecodeError:
-                # Fallback for binary files
                 logger.warning(f'File appears to be binary: {tool_input["path"]}')
                 raise ValueError(f'Cannot read binary file: {tool_input["path"]}')
 
         elif tool_name == 'write_file':
             file_path = project_root / tool_input['path']
 
-            # Ensure parent directory exists
             try:
                 file_path.parent.mkdir(parents=True, exist_ok=True)
             except PermissionError:
                 raise PermissionError(f'Permission denied creating directory: {file_path.parent}')
 
-            # Verify parent directory was created successfully
             if not file_path.parent.is_dir():
                 raise IOError(f'Failed to create parent directory: {file_path.parent}')
 

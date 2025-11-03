@@ -91,32 +91,25 @@ def run_server(server_path: str, server_cwd: str = None):
         print(f'Error: Server file not found: {server_path}', file=sys.stderr)
         sys.exit(1)
 
-    # Determine module path (same logic as mcp_client.py)
     server_dir = server_file.parent
     package_name = server_dir.name
     namespace_dir = server_dir.parent
     namespace_name = namespace_dir.name
 
-    # Use provided working directory or auto-detect
     if server_cwd:
         working_dir = Path(server_cwd)
     else:
         working_dir = namespace_dir.parent
 
-    # Construct module path
     module_path = f'{namespace_name}.{package_name}.server'
 
-    # Change to working directory and ensure it's in sys.path
     os.chdir(working_dir)
     if str(working_dir) not in sys.path:
         sys.path.insert(0, str(working_dir))
 
     try:
-        # Import the server module
         module = importlib.import_module(module_path)
 
-        # Call main() to start the server
-        # (The if __name__ == '__main__' block doesn't run when imported as a module)
         if hasattr(module, 'main'):
             module.main()
         else:
@@ -141,23 +134,15 @@ def main():
 
     args = parser.parse_args()
 
-    # Configure MCP SDK logging based on environment variable
     log_level = os.environ.get('MCP_CLOUDWATCH_APPSIGNALS_LOG_LEVEL', 'INFO').upper()
     mcp_logger = logging.getLogger('mcp')
     mcp_logger.setLevel(getattr(logging, log_level))
 
-    # Load mock configuration
     mock_config = load_mock_config()
 
-    # Fixture paths in mock_config are already absolute (resolved by Task.resolved_mock_config property)
-    # So we don't need to pass fixtures_dir
-    fixtures_dir = None
-
-    # Apply mocks BEFORE importing server
     if mock_config:
-        apply_mocks(mock_config, fixtures_dir)
+        apply_mocks(mock_config, fixtures_dir=None)
 
-    # Run server
     run_server(args.server_path, args.server_cwd)
 
 

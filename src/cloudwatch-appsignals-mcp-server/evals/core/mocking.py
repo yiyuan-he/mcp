@@ -69,19 +69,16 @@ class MockHandler(ABC):
         Returns:
             Resolved fixture data
         """
-        # Handle lists of request/response pairs
         if isinstance(value, list):
             return [self.resolve_fixture(item, fixtures_dir) for item in value]
 
-        # Handle request/response pair dicts
         if isinstance(value, dict):
             if 'request' in value and 'response' in value:
-                # Load response fixture if it's a file path (should be absolute path string)
                 response = value['response']
                 if isinstance(response, str) and (
                     response.endswith('.json') or response.endswith('.txt')
                 ):
-                    fixture_path = Path(response)  # Already absolute
+                    fixture_path = Path(response)
                     if fixture_path.exists():
                         if response.endswith('.json'):
                             with open(fixture_path, 'r') as f:
@@ -94,7 +91,6 @@ class MockHandler(ABC):
 
                 return {'request': value['request'], 'response': response}
 
-            # Other dicts pass through unchanged (e.g., inline mock data)
             return value
 
         return value
@@ -129,7 +125,6 @@ class Boto3MockHandler(MockHandler):
         self.fixtures_dir = fixtures_dir
         self.original_client = boto3.client
 
-        # Resolve fixtures in mock config
         resolved_config = {}
         for service, operations in mock_config.items():
             resolved_config[service] = {}
@@ -137,8 +132,6 @@ class Boto3MockHandler(MockHandler):
                 resolved_config[service][operation] = self.resolve_fixture(response, fixtures_dir)
 
         self.mock_responses = resolved_config
-
-        # Patch boto3.client
         boto3.client = self._create_mock_client
 
     def unpatch(self) -> None:
@@ -165,9 +158,7 @@ class Boto3MockHandler(MockHandler):
         if service_name in self.mock_responses:
             service_mocks = self.mock_responses[service_name]
 
-            # Set up each operation as a mock method
             for operation, response_data in service_mocks.items():
-                # All mocks must be lists of request/response pairs
                 if not isinstance(response_data, list):
                     raise ValueError(
                         f'Invalid mock configuration for {service_name}.{operation}. '
@@ -186,7 +177,6 @@ class Boto3MockHandler(MockHandler):
                         f'Got: {response_data}'
                     )
 
-                # Create parameter-aware mock with request/response pairs
                 mock_method = self._create_parameter_aware_mock(operation, response_data)
                 setattr(mock_client, operation, mock_method)
 
@@ -208,20 +198,16 @@ class Boto3MockHandler(MockHandler):
         """
 
         def mock_implementation(**kwargs):
-            # Try to find a matching response
             for matcher in matchers:
                 request_params = matcher.get('request', {})
                 response = matcher.get('response')
 
-                # Empty request dict {} matches any parameters (wildcard)
                 if not request_params:
                     return response
 
-                # Non-empty request dict: check if all specified parameters match
                 if all(kwargs.get(key) == value for key, value in request_params.items()):
                     return response
 
-            # No match found - raise helpful error
             raise ValueError(
                 f'No mock response found for {operation} with parameters: {kwargs}\n'
                 f'Available request patterns: {[m.get("request") for m in matchers]}'

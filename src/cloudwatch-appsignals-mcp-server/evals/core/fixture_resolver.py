@@ -44,11 +44,9 @@ class FixtureResolver:
                         if isinstance(response, str) and (
                             response.endswith('.json') or response.endswith('.txt')
                         ):
-                            # Check if it looks like a relative path (not absolute)
                             if not Path(response).is_absolute():
                                 return True
             elif isinstance(value, str) and (value.endswith('.json') or value.endswith('.txt')):
-                # Check if it looks like a relative path (not absolute)
                 if not Path(value).is_absolute():
                     return True
         return False

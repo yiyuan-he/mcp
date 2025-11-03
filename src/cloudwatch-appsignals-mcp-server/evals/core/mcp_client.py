@@ -70,7 +70,6 @@ async def connect_to_mcp_server(
     if not server_root_dir:
         raise ValueError('server_root_dir is required')
 
-    # Resolve paths to absolute
     server_file_path = Path(server_file).resolve()
     if not server_file_path.exists():
         raise FileNotFoundError(f'MCP server not found: {server_file}')
@@ -84,24 +83,16 @@ async def connect_to_mcp_server(
         env['LOGURU_LEVEL'] = 'ERROR'
         env['MCP_CLOUDWATCH_APPSIGNALS_LOG_LEVEL'] = 'WARNING'
 
-    # Track temp file for cleanup
     mock_file_path = None
 
     try:
-        # Always use wrapper for consistent logging configuration
-        # If mocks provided, write to temp file
         if mock_config:
-            # Create temp file for mock config
             mock_fd, mock_file_path = tempfile.mkstemp(suffix='.json', prefix='mcp_mocks_')
             with os.fdopen(mock_fd, 'w') as f:
                 json.dump(mock_config, f)
 
-            # Set environment variable for wrapper to find mocks
             env['MCP_EVAL_MOCK_FILE'] = mock_file_path
 
-        # Start server via wrapper (which handles mocking setup)
-        # Wrapper runs from current directory (inherits from parent process where 'import evals' works)
-        # Wrapper internally changes to server_root_dir before running the server
         server_params = StdioServerParameters(
             command=sys.executable,
             args=[
@@ -112,20 +103,16 @@ async def connect_to_mcp_server(
                 str(server_root_dir_path),
             ],
             env=env,
-            # No cwd specified - inherits from parent process
         )
 
-        # Yield the stdio_client context manager
         async with stdio_client(server_params) as client:
             yield client
 
     finally:
-        # Clean up temp file after server subprocess has finished
         if mock_file_path and os.path.exists(mock_file_path):
             try:
                 os.unlink(mock_file_path)
             except OSError:
-                # Best effort cleanup - don't fail if we can't delete
                 pass
 
 

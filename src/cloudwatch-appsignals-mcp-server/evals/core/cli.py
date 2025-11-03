@@ -54,13 +54,11 @@ def discover_tasks(task_dir: Path) -> tuple[List[Any], Dict[str, List[Any]]]:
     all_tasks = []
     tasks_by_module = {}
 
-    # Add evals directory to Python path so framework imports work in task modules
     evals_dir = task_dir.parent
     evals_dir_str = str(evals_dir.absolute())
     if evals_dir_str not in sys.path:
         sys.path.insert(0, evals_dir_str)
 
-    # Add task directory to Python path so we can import task modules
     task_dir_str = str(task_dir.absolute())
     if task_dir_str not in sys.path:
         sys.path.insert(0, task_dir_str)
