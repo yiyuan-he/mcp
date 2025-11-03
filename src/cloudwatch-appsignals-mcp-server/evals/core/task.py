@@ -18,6 +18,7 @@ Tasks define what the agent should accomplish, validation criteria,
 and optional mock configurations.
 """
 
+from .fixture_resolver import FixtureResolver
 from .process_executor import ProcessExecutor, SubprocessExecutor
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -188,7 +189,7 @@ class Task(ABC):
 
         # If mock_config exists but no fixtures_dir, validate that we don't have fixture references
         if self.fixtures_dir is None:
-            if self._has_fixture_references(self.mock_config):
+            if FixtureResolver.has_fixture_references(self.mock_config):
                 raise ValueError(
                     f"Task '{self.id}' has fixture file references in mock_config but no fixtures_dir specified. "
                     f'Either provide fixtures_dir parameter or use absolute paths/inline mock data.'
@@ -197,81 +198,7 @@ class Task(ABC):
             return self.mock_config
 
         # Resolve fixture paths relative to fixtures directory
-        return self._resolve_fixture_paths(self.mock_config, self.fixtures_dir)
-
-    def _has_fixture_references(self, mock_config: Dict[str, Any]) -> bool:
-        """Check if mock configuration contains relative fixture file references.
-
-        Args:
-            mock_config: Mock configuration dictionary
-
-        Returns:
-            True if any value looks like a relative fixture file path
-        """
-        for key, value in mock_config.items():
-            if isinstance(value, dict):
-                if self._has_fixture_references(value):
-                    return True
-            elif isinstance(value, list):
-                for item in value:
-                    if isinstance(item, str) and (item.endswith('.json') or item.endswith('.txt')):
-                        # Check if it looks like a relative path (not absolute)
-                        if not Path(item).is_absolute():
-                            return True
-            elif isinstance(value, str) and (value.endswith('.json') or value.endswith('.txt')):
-                # Check if it looks like a relative path (not absolute)
-                if not Path(value).is_absolute():
-                    return True
-        return False
-
-    def _resolve_fixture_paths(self, mock_config: Dict[str, Any], fixtures_dir: Path) -> Dict[str, Any]:
-        """Recursively resolve fixture file paths to absolute paths.
-
-        Args:
-            mock_config: Mock configuration dictionary
-            fixtures_dir: Base directory for fixture files
-
-        Returns:
-            Mock configuration with resolved paths
-        """
-        resolved = {}
-        for key, value in mock_config.items():
-            if isinstance(value, dict):
-                # Recursively resolve nested dictionaries
-                resolved[key] = self._resolve_fixture_paths(value, fixtures_dir)
-            elif isinstance(value, list):
-                # Lists should contain request/response pairs
-                resolved[key] = [
-                    self._resolve_request_response_pair(item, fixtures_dir) for item in value
-                ]
-            else:
-                # Pass through other values
-                resolved[key] = value
-        return resolved
-
-    def _resolve_request_response_pair(
-        self, pair: Dict[str, Any], fixtures_dir: Path
-    ) -> Dict[str, Any]:
-        """Resolve a request/response pair.
-
-        Args:
-            pair: Dict with 'request' and 'response' keys
-            fixtures_dir: Base directory for fixture files
-
-        Returns:
-            Resolved pair with absolute response path
-        """
-        if not isinstance(pair, dict) or 'request' not in pair or 'response' not in pair:
-            raise ValueError(
-                f"Expected request/response pair dict with 'request' and 'response' keys, got: {pair}"
-            )
-
-        response = pair['response']
-        # Resolve response path if it's a string fixture reference
-        if isinstance(response, str) and (response.endswith('.json') or response.endswith('.txt')):
-            response = str(fixtures_dir / response)
-
-        return {'request': pair['request'], 'response': response}
+        return FixtureResolver.resolve_mock_config(self.mock_config, self.fixtures_dir)
 
     def get_working_directory(self) -> Optional[Path]:
         """Return the working directory for this task.
