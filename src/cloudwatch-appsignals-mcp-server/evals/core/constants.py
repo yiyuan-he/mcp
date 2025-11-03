@@ -26,7 +26,8 @@ DEFAULT_AWS_REGION = os.environ.get('MCP_EVAL_AWS_REGION', _FALLBACK_AWS_REGION)
 DEFAULT_MAX_TURNS = int(os.environ.get('MCP_EVAL_MAX_TURNS', str(_FALLBACK_MAX_TURNS)))
 DEFAULT_TEMPERATURE = float(os.environ.get('MCP_EVAL_TEMPERATURE', str(_FALLBACK_TEMPERATURE)))
 
-# Specialized validation prompts for different eval types
+# LLM-as-a-Judge Validation Prompts
+# Best practices: https://www.evidentlyai.com/llm-guide/llm-as-a-judge
 
 CODE_MODIFICATION_VALIDATION_PROMPT = """You are evaluating code changes for a software modification task.
 
