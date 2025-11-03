@@ -43,22 +43,20 @@ class EvalRunner:
         ]
 
         # Run evaluations
-        runner = EvalRunner(tasks, server_path='../../src/server.py')
+        runner = EvalRunner(tasks)
         results = await runner.run_all(bedrock_client, verbose=True)
     """
 
-    def __init__(self, tasks: List[Task]):
+    def __init__(self, tasks: List[Task], executor: PromptExecutor = None):
         """Initialize evaluation runner.
 
         Args:
             tasks: List of Task instances to evaluate
+            executor: Optional PromptExecutor instance. If not provided, creates a default instance.
+                     Injecting this dependency allows for easier testing and customization.
         """
         self.tasks = tasks
-
-        # Initialize helper classes (Dependency Injection)
-        # These could be passed in as parameters for even better testability,
-        # but for now we instantiate them here
-        self.prompt_executor = PromptExecutor()
+        self.prompt_executor = executor if executor is not None else PromptExecutor()
 
     async def run_all(
         self,
