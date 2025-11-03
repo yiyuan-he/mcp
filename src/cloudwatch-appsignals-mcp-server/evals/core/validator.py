@@ -69,13 +69,9 @@ class LLMJudgeValidator(Validator):
         """Validate using LLM as judge."""
         logger.info('Running LLM-as-judge validation...')
 
-        # Format rubric
         rubric_items = '\n'.join([f'{i + 1}. {criterion}' for i, criterion in enumerate(rubric)])
-
-        # Format captured data for prompt
         captured_str = self._format_captured_data(captured_data)
 
-        # Build prompt
         prompt = self.validation_prompt_template.format(
             rubric_items=rubric_items,
             captured_data=captured_str,
@@ -84,14 +80,10 @@ class LLMJudgeValidator(Validator):
 
         try:
             start = time.time()
-
-            # Use injected LLM provider
             response_text = await self.llm_provider.generate(prompt)
-
             elapsed = time.time() - start
             logger.debug(f'LLM validation took {elapsed:.2f}s')
 
-            # Parse response
             criteria_results = self._parse_llm_response(response_text, rubric)
             overall_pass = all(r['status'] == 'PASS' for r in criteria_results)
 
@@ -114,11 +106,9 @@ class LLMJudgeValidator(Validator):
         """Format captured data for LLM prompt."""
         sections = []
 
-        # Git diff
         if 'git_diff' in captured_data and captured_data['git_diff']:
             sections.append(f'**Git Diff:**\n```\n{captured_data["git_diff"]}\n```')
 
-        # Build result
         if 'build_result' in captured_data:
             build = captured_data['build_result']
             if build.get('success'):
@@ -130,11 +120,9 @@ class LLMJudgeValidator(Validator):
                     f'**Build Validation:**\n✗ Build FAILED (exit code {exit_code})\n\nBuild errors:\n{stderr_preview}'
                 )
 
-        # Final response
         if 'final_response' in captured_data:
             sections.append(f'**Agent Response:**\n{captured_data["final_response"]}')
 
-        # Tool calls
         if 'tool_calls' in captured_data:
             tool_names = [t['name'] for t in captured_data['tool_calls']]
             sections.append(f'**Tools Called:** {", ".join(tool_names)}')
@@ -154,24 +142,18 @@ class LLMJudgeValidator(Validator):
             if not line:
                 continue
 
-            # Try to extract status marker (case-insensitive)
             line_upper = line.upper()
             if '[PASS]' in line_upper:
                 status = 'PASS'
-                # Extract reasoning after [PASS] marker (case-insensitive split)
-                # Find the position of [PASS] and extract everything after it
                 pass_idx = line_upper.find('[PASS]')
                 reasoning = line[pass_idx + 6 :].strip()
             elif '[FAIL]' in line_upper:
                 status = 'FAIL'
-                # Extract reasoning after [FAIL] marker (case-insensitive split)
                 fail_idx = line_upper.find('[FAIL]')
                 reasoning = line[fail_idx + 6 :].strip()
             else:
-                # Line doesn't have a status marker, skip it
                 continue
 
-            # Only add if we haven't exceeded the rubric length
             if len(criteria_results) < len(rubric):
                 criteria_results.append(
                     {
@@ -181,7 +163,6 @@ class LLMJudgeValidator(Validator):
                     }
                 )
 
-        # Validate we got the expected number of results
         if len(criteria_results) != len(rubric):
             logger.warning(
                 f'LLM validation format mismatch: expected {len(rubric)} criteria, '
@@ -190,7 +171,7 @@ class LLMJudgeValidator(Validator):
             )
             logger.debug(f'Raw LLM response:\n{response_text}')
 
-            # Fill in missing criteria with FAIL status
+            # Fill missing criteria with FAIL
             while len(criteria_results) < len(rubric):
                 criteria_results.append(
                     {
@@ -233,10 +214,8 @@ class BuildValidator(Validator):
         rubric: List[str],
     ) -> Dict[str, Any]:
         """Validate by running build command."""
-        # Run build command
         logger.info(f'Running build command: {self.command}')
         try:
-            # Use asyncio subprocess for proper async execution
             process = await asyncio.create_subprocess_shell(
                 self.command,
                 cwd=self.working_dir,
@@ -244,7 +223,6 @@ class BuildValidator(Validator):
                 stderr=asyncio.subprocess.PIPE,
             )
 
-            # Wait for completion with timeout
             try:
                 stdout_bytes, stderr_bytes = await asyncio.wait_for(
                     process.communicate(), timeout=self.timeout

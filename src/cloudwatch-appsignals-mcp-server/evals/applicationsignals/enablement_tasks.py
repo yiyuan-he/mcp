@@ -170,10 +170,8 @@ My application directory is: {app_abs_path}"""
         bedrock_client = context['bedrock_client']
         validators = []
 
-        # Add build validator if build config provided
         if self.build_command and self.build_working_dir:
             build_working_dir = working_directory / self.build_working_dir
-
             validators.append(
                 BuildValidator(
                     command=self.build_command,
@@ -181,7 +179,6 @@ My application directory is: {app_abs_path}"""
                 )
             )
 
-        # Add LLM judge validator with Bedrock provider
         llm_provider = BedrockLLMProvider(bedrock_client)
         validators.append(
             LLMJudgeValidator(

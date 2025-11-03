@@ -48,11 +48,9 @@ class PromptExecutor:
         """
         logger.debug('Running eval for task')
 
-        # Extract dependencies from context
         bedrock_client = context['bedrock_client']
         working_directory = context['working_directory']
 
-        # Step 1: Run agent loop
         metrics_tracker = MetricsTracker()
         messages = await run_agent_loop(
             bedrock_client=bedrock_client,
@@ -64,18 +62,14 @@ class PromptExecutor:
             max_turns=task.max_turns,
         )
 
-        # Step 2: Execute captors
         captured_data = await self._execute_captors(
             task, context, messages, metrics_tracker, working_directory, prompt
         )
 
-        # Step 3: Execute validators
         validation_results = await self._execute_validators(task, context, captured_data)
 
-        # Step 4: Calculate metrics
         metrics = metrics_tracker.get_metrics(expected_tools=task.expected_tools)
 
-        # Step 5: Determine overall success
         overall_pass = all(v.get('overall_pass', False) for v in validation_results)
 
         return {

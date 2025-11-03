@@ -106,8 +106,7 @@ class ServiceInvestigationTask(Task):
         return SERVER_CWD
 
 
-# Task definitions demonstrating range of complexity
-
+# Task definitions
 TASKS = [
     # Complex: Multi-auditor root cause analysis - DynamoDB throttling
     ServiceInvestigationTask(

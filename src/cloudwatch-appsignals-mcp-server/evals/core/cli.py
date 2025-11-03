@@ -65,17 +65,13 @@ def discover_tasks(task_dir: Path) -> tuple[List[Any], Dict[str, List[Any]]]:
     if task_dir_str not in sys.path:
         sys.path.insert(0, task_dir_str)
 
-    # Find all *_tasks.py files in task directory
     task_modules = [f.stem for f in task_dir.glob('*_tasks.py')]
-
     logger.debug(f'Discovered task modules in {task_dir}: {task_modules}')
 
     for module_name in task_modules:
         try:
-            # Import the module
             module = importlib.import_module(module_name)
 
-            # Get TASKS list if it exists
             if hasattr(module, 'TASKS'):
                 tasks = module.TASKS
                 all_tasks.extend(tasks)
@@ -107,7 +103,6 @@ def report_task_results(task: Any, result: Dict[str, Any]) -> None:
         print('=' * 60 + '\n')
         return
 
-    # Report metrics
     metrics = result['metrics']
     print(f'Duration: {metrics["task_duration"]:.2f}s')
     print(f'Turns: {metrics["turn_count"]}')
@@ -116,7 +111,6 @@ def report_task_results(task: Any, result: Dict[str, Any]) -> None:
     print(f'Success Rate: {metrics["success_rate"]:.1%}')
     print(f'File Operations: {metrics["file_operation_count"]}')
 
-    # Report per-tool breakdown
     if metrics.get('tool_breakdown'):
         print('\nTool Breakdown:')
         for tool_name, stats in sorted(metrics['tool_breakdown'].items()):
@@ -125,7 +119,6 @@ def report_task_results(task: Any, result: Dict[str, Any]) -> None:
                 f'({stats["success"]} success, {stats["failed"]} failed)'
             )
 
-    # Report validation results
     print('\nValidation Results:')
     for validation_result in result['validation_results']:
         validator_name = validation_result.get('validator_name', 'Unknown')
@@ -139,12 +132,10 @@ def report_task_results(task: Any, result: Dict[str, Any]) -> None:
             status = '✅ PASS' if validation_result['overall_pass'] else '❌ FAIL'
             print(f'  {validator_name}: {status} ({passed}/{total} criteria met)')
 
-            # Display each criterion with its status
             for criterion_result in criteria_results:
                 status_text = criterion_result['status']
                 print(f'    [{status_text}] {criterion_result["criterion"]}')
 
-    # Overall task status
     status = '✅ PASS' if result['success'] else '❌ FAIL'
     print(f'\nOverall Task Status: {status}')
     print('=' * 60 + '\n')
@@ -201,14 +192,12 @@ async def main():
 
     print(f'Starting MCP tool evaluation for {args.task_dir}\n')
 
-    # Auto-discover tasks
     all_tasks, tasks_by_module = discover_tasks(task_dir)
 
     if not all_tasks:
         logger.error('No tasks found in *_tasks.py files')
         sys.exit(1)
 
-    # Handle --list flag
     if args.list:
         print('Available task modules and tasks:\n')
         for module_name, module_tasks in tasks_by_module.items():

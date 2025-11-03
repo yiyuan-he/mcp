@@ -66,13 +66,11 @@ class EvalRunner:
 
         Connects to MCP server and executes prompt via PromptExecutor.
         """
-        # Get configuration from task
         server_file = str(task.get_server_file())
         server_root_dir = str(task.get_server_root_directory())
         mock_config = task.resolved_mock_config
         working_directory = task.get_working_directory() or Path.cwd()
 
-        # Connect to MCP server with optional mocks
         async with connect_to_mcp_server(
             server_file=server_file,
             server_root_dir=server_root_dir,
@@ -82,17 +80,12 @@ class EvalRunner:
             async with ClientSession(read, write) as session:
                 await session.initialize()
 
-                # Get MCP tools
                 tools_response = await session.list_tools()
                 logger.debug(f'Connected to MCP server with {len(tools_response.tools)} tools')
 
-                # Create context for task
                 context = self._create_context(working_directory, bedrock_client)
-
-                # Get prompt from task
                 prompt = task.get_prompt(context)
 
-                # Execute prompt (delegated to PromptExecutor)
                 logger.debug(f'Running eval for task {task.id}')
                 result = await self.prompt_executor.execute_prompt(
                     prompt=prompt,
@@ -102,7 +95,6 @@ class EvalRunner:
                     context=context,
                 )
 
-                # Add task ID to result
                 result['task_id'] = task.id
                 return result
 

@@ -60,10 +60,7 @@ class GitDiffCaptor(Captor):
     ) -> Dict[str, Any]:
         """Capture git diff for configured paths."""
         try:
-            # Build full paths from project_root + git_paths
             full_paths = [str(project_root / path) for path in self.git_paths]
-
-            # Run git diff with path arguments to limit changes to specified paths
             result = self.process_executor.run(
                 ['git', 'diff', '--'] + full_paths,
                 timeout=10,
@@ -123,7 +120,6 @@ class FinalResponseCaptor(Captor):
         project_root: Path,
     ) -> Dict[str, Any]:
         """Capture final response text."""
-        # Find last assistant message with text content
         for message in reversed(messages):
             if message.get('role') == 'assistant':
                 for content in message.get('content', []):

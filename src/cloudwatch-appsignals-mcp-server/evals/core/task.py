@@ -90,17 +90,14 @@ class Task(ABC):
         if not self.mock_config:
             return None
 
-        # If mock_config exists but no fixtures_dir, validate that we don't have fixture references
         if self.fixtures_dir is None:
             if FixtureResolver.has_fixture_references(self.mock_config):
                 raise ValueError(
                     f"Task '{self.id}' has fixture file references in mock_config but no fixtures_dir specified. "
                     f'Either provide fixtures_dir parameter or use absolute paths/inline mock data.'
                 )
-            # No fixture files, just return as-is (inline mock config or absolute paths)
             return self.mock_config
 
-        # Resolve fixture paths relative to fixtures directory
         return FixtureResolver.resolve_mock_config(self.mock_config, self.fixtures_dir)
 
     def get_working_directory(self) -> Optional[Path]:

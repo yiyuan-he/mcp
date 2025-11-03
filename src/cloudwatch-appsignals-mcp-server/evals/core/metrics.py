@@ -59,7 +59,6 @@ class MetricsTracker:
         Args:
             expected_tools: List of MCP tools expected to be used
         """
-        # Calculate unique tools and per-tool breakdown
         tool_breakdown = {}
         unique_tools = set()
         for call in self.tool_calls:

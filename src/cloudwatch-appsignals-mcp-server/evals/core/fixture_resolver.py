@@ -59,16 +59,13 @@ class FixtureResolver:
         resolved = {}
         for key, value in mock_config.items():
             if isinstance(value, dict):
-                # Recursively resolve nested dictionaries
                 resolved[key] = FixtureResolver._resolve_fixture_paths(value, fixtures_dir)
             elif isinstance(value, list):
-                # Lists should contain request/response pairs
                 resolved[key] = [
                     FixtureResolver._resolve_request_response_pair(item, fixtures_dir)
                     for item in value
                 ]
             else:
-                # Pass through other values
                 resolved[key] = value
         return resolved
 
@@ -81,7 +78,6 @@ class FixtureResolver:
             )
 
         response = pair['response']
-        # Resolve response path if it's a string fixture reference
         if isinstance(response, str) and (response.endswith('.json') or response.endswith('.txt')):
             response = str(fixtures_dir / response)
 
