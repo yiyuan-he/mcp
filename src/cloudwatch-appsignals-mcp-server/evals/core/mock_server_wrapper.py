@@ -31,6 +31,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 
 def load_mock_config() -> dict:
@@ -57,7 +58,7 @@ def load_mock_config() -> dict:
         return {}
 
 
-def apply_mocks(mock_config: dict, fixtures_dir: Path = None):
+def apply_mocks(mock_config: dict, fixtures_dir: Optional[Path] = None):
     """Apply mocks using the mock handler registry.
 
     Args:
@@ -78,7 +79,7 @@ def apply_mocks(mock_config: dict, fixtures_dir: Path = None):
         print(f'Warning: Failed to apply mocks: {e}', file=sys.stderr)
 
 
-def run_server(server_path: str, server_cwd: str = None):
+def run_server(server_path: str, server_cwd: Optional[str] = None):
     """Import and run the MCP server module.
 
     Args:

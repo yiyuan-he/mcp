@@ -21,13 +21,13 @@ from .task_result import TaskResult
 from loguru import logger
 from mcp import ClientSession
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class EvalRunner:
     """Orchestrates evaluation of MCP tools using agent-based testing."""
 
-    def __init__(self, tasks: List[Task], executor: PromptExecutor = None):
+    def __init__(self, tasks: List[Task], executor: Optional[PromptExecutor] = None):
         """Initialize evaluation runner.
 
         Args:

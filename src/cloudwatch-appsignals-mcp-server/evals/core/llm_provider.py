@@ -15,7 +15,7 @@
 """LLM provider abstraction for pluggable LLM support."""
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 
 
 class LLMProvider(ABC):
@@ -30,7 +30,12 @@ class LLMProvider(ABC):
 class BedrockLLMProvider(LLMProvider):
     """AWS Bedrock LLM provider implementation."""
 
-    def __init__(self, bedrock_client: Any, model_id: str = None, temperature: float = None):
+    def __init__(
+        self,
+        bedrock_client: Any,
+        model_id: Optional[str] = None,
+        temperature: Optional[float] = None,
+    ):
         """Initialize Bedrock LLM provider.
 
         Args:

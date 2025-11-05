@@ -17,7 +17,7 @@
 from .process_executor import ProcessExecutor, SubprocessExecutor
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class Captor(ABC):
@@ -40,7 +40,7 @@ class Captor(ABC):
 class GitDiffCaptor(Captor):
     """Captures git diff of file changes made by agent."""
 
-    def __init__(self, git_paths: List[str], process_executor: ProcessExecutor = None):
+    def __init__(self, git_paths: List[str], process_executor: Optional[ProcessExecutor] = None):
         """Initialize GitDiffCaptor.
 
         Args:
