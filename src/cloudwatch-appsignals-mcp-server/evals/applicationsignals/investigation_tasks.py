@@ -173,6 +173,12 @@ and provide detailed information about their configuration and current status?""
                             'response': 'investigation/list_audit_findings/slo_breach_investigation.json',
                         }
                     ],
+                    'list_service_level_objectives': [
+                        {
+                            'request': {},
+                            'response': 'investigation/list_service_level_objectives/checkout_service_slos.json',
+                        }
+                    ],
                     'get_service_level_objective': [
                         {
                             'request': {'Id': 'CheckoutService-Availability'},

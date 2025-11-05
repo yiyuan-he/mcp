@@ -1,0 +1,24 @@
+{
+  "SloSummaries": [
+    {
+      "Name": "CheckoutService-Availability",
+      "Arn": "arn:aws:application-signals:us-west-2:123456789012:slo/CheckoutService-Availability",
+      "CreatedTime": 1705318200,
+      "KeyAttributes": {
+        "Name": "CheckoutService",
+        "Type": "Service",
+        "Environment": "prod"
+      }
+    },
+    {
+      "Name": "CheckoutService-Latency",
+      "Arn": "arn:aws:application-signals:us-west-2:123456789012:slo/CheckoutService-Latency",
+      "CreatedTime": 1705318200,
+      "KeyAttributes": {
+        "Name": "CheckoutService",
+        "Type": "Service",
+        "Environment": "prod"
+      }
+    }
+  ]
+}
