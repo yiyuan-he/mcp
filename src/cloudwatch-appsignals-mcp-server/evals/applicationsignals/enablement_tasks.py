@@ -184,6 +184,7 @@ My application directory is: {app_abs_path}"""
             LLMJudgeValidator(
                 validation_prompt_template=CODE_MODIFICATION_VALIDATION_PROMPT,
                 llm_provider=llm_provider,
+                rubric=self.rubric,
             )
         )
 

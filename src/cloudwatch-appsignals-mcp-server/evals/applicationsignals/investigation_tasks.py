@@ -94,6 +94,7 @@ class ServiceInvestigationTask(Task):
             LLMJudgeValidator(
                 validation_prompt_template=DATA_INTERPRETATION_VALIDATION_PROMPT,
                 llm_provider=llm_provider,
+                rubric=self.rubric,
             )
         ]
 
