@@ -152,8 +152,6 @@ async def run_agent_loop(
     Returns:
         List of conversation messages
     """
-    metrics_tracker.start_task()
-
     logger.debug('Sending prompt to Claude...')
 
     bedrock_mcp_tools = convert_mcp_tools_to_bedrock(mcp_tools)
@@ -166,6 +164,8 @@ async def run_agent_loop(
     messages = [{'role': 'user', 'content': [{'text': prompt}]}]
 
     turn = 0
+
+    metrics_tracker.start_task()
 
     while turn < max_turns:
         turn += 1
