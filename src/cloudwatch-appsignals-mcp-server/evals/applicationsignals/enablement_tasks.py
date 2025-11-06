@@ -163,7 +163,7 @@ My application directory is: {app_abs_path}"""
         Returns:
             List of validators (BuildValidator and LLMJudgeValidator)
         """
-        from evals.core.constants import CODE_MODIFICATION_VALIDATION_PROMPT
+        from evals.core.eval_prompts import CODE_MODIFICATION_VALIDATION_PROMPT
         from evals.core.llm_provider import BedrockLLMProvider
 
         working_directory = context['working_directory']

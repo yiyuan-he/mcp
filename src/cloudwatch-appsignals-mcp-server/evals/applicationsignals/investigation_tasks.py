@@ -15,7 +15,7 @@
 """Service investigation tasks for Application Signals MCP evaluation."""
 
 from evals.core import FinalResponseCaptor, LLMJudgeValidator, Task, ToolCallsCaptor
-from evals.core.constants import DATA_INTERPRETATION_VALIDATION_PROMPT
+from evals.core.eval_prompts import DATA_INTERPRETATION_VALIDATION_PROMPT
 from pathlib import Path
 
 
