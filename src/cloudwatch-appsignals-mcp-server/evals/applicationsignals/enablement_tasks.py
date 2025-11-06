@@ -23,6 +23,7 @@ from evals.core import (
     GitDiffCaptor,
     LLMJudgeValidator,
     Task,
+    ValidationPromptType,
 )
 from loguru import logger
 from pathlib import Path
@@ -163,7 +164,6 @@ My application directory is: {app_abs_path}"""
         Returns:
             List of validators (BuildValidator and LLMJudgeValidator)
         """
-        from evals.core.eval_prompts import CODE_MODIFICATION_VALIDATION_PROMPT
         from evals.core.llm_provider import BedrockLLMProvider
 
         working_directory = context['working_directory']
@@ -182,7 +182,7 @@ My application directory is: {app_abs_path}"""
         llm_provider = BedrockLLMProvider(bedrock_client)
         validators.append(
             LLMJudgeValidator(
-                validation_prompt_template=CODE_MODIFICATION_VALIDATION_PROMPT,
+                validation_prompt_type=ValidationPromptType.CODE_MODIFICATION,
                 llm_provider=llm_provider,
                 rubric=self.rubric,
             )

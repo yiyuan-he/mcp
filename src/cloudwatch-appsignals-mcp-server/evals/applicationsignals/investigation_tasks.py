@@ -14,8 +14,13 @@
 
 """Service investigation tasks for Application Signals MCP evaluation."""
 
-from evals.core import FinalResponseCaptor, LLMJudgeValidator, Task, ToolCallsCaptor
-from evals.core.eval_prompts import DATA_INTERPRETATION_VALIDATION_PROMPT
+from evals.core import (
+    FinalResponseCaptor,
+    LLMJudgeValidator,
+    Task,
+    ToolCallsCaptor,
+    ValidationPromptType,
+)
 from pathlib import Path
 
 
@@ -92,7 +97,7 @@ class ServiceInvestigationTask(Task):
 
         return [
             LLMJudgeValidator(
-                validation_prompt_template=DATA_INTERPRETATION_VALIDATION_PROMPT,
+                validation_prompt_type=ValidationPromptType.DATA_INTERPRETATION,
                 llm_provider=llm_provider,
                 rubric=self.rubric,
             )
