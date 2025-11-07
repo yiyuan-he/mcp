@@ -69,7 +69,7 @@ class ServiceInvestigationTask(Task):
         self.prompt_text = prompt
         self.validation_rubric = validation_rubric
 
-    def get_prompt(self, context: dict) -> str:
+    def get_prompt(self, working_directory: Path) -> str:
         """Return the investigation prompt."""
         return self.prompt_text
 
@@ -78,18 +78,17 @@ class ServiceInvestigationTask(Task):
         """Return validation rubric."""
         return self.validation_rubric
 
-    def get_captors(self, context: dict):
+    def get_captors(self, working_directory: Path):
         """Return captors for this task."""
         return [
             ToolCallsCaptor(),
             FinalResponseCaptor(),
         ]
 
-    def get_validators(self, context: dict):
+    def get_validators(self, working_directory: Path, bedrock_client):
         """Return validators for this task."""
         from evals.core.llm_provider import BedrockLLMProvider
 
-        bedrock_client = context['bedrock_client']
         llm_provider = BedrockLLMProvider(bedrock_client)
 
         return [

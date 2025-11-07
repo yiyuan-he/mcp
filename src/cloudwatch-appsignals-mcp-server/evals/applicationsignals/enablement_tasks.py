@@ -117,16 +117,15 @@ class EnablementTask(Task):
         """Return MCP server root directory."""
         return SERVER_CWD
 
-    def get_prompt(self, context: dict) -> str:
+    def get_prompt(self, working_directory: Path) -> str:
         """Return enablement prompt with absolute paths.
 
         Args:
-            context: Runtime context with 'working_directory' key
+            working_directory: Path to task working directory
 
         Returns:
             Enablement prompt string
         """
-        working_directory = context['working_directory']
         iac_abs_path = working_directory / self.iac_dir
         app_abs_path = working_directory / self.app_dir
 
@@ -140,32 +139,31 @@ My application directory is: {app_abs_path}"""
         """Return validation rubric."""
         return self.validation_rubric
 
-    def get_captors(self, context: dict):
+    def get_captors(self, working_directory: Path):
         """Return captors for this task.
 
         Captures git diff to evaluate code modifications.
 
         Args:
-            context: Runtime context (unused)
+            working_directory: Path to task working directory
 
         Returns:
             List of captors
         """
         return [GitDiffCaptor(git_paths=self.git_paths)]
 
-    def get_validators(self, context: dict):
+    def get_validators(self, working_directory: Path, bedrock_client):
         """Return validators for this task.
 
         Args:
-            context: Runtime context with 'working_directory' and 'bedrock_client' keys
+            working_directory: Path to task working directory
+            bedrock_client: Boto3 Bedrock client for LLM calls
 
         Returns:
             List of validators (BuildValidator and LLMJudgeValidator)
         """
         from evals.core.llm_provider import BedrockLLMProvider
 
-        working_directory = context['working_directory']
-        bedrock_client = context['bedrock_client']
         validators = []
 
         if self.build_command and self.build_working_dir:
@@ -188,19 +186,17 @@ My application directory is: {app_abs_path}"""
 
         return validators
 
-    def cleanup(self, context: dict):
+    def cleanup(self, working_directory: Path):
         """Clean up git changes made by enablement agent.
 
         Resets git state for paths specified in git_paths.
 
         Args:
-            context: Runtime context with 'working_directory' key
+            working_directory: Path to task working directory
         """
         if not self.git_paths:
             logger.warning('No git_paths specified to clean')
             return
-
-        working_directory = context['working_directory']
 
         try:
             for rel_path in self.git_paths:
