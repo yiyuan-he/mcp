@@ -65,7 +65,6 @@ class EnablementTask(Task):
         build_command: Optional[str] = None,
         build_working_dir: Optional[str] = None,
         modifies_code: bool = True,
-        max_turns: int = 20,
     ):
         """Initialize EnablementTask.
 
@@ -82,9 +81,8 @@ class EnablementTask(Task):
             build_command: Optional build command (e.g., 'npm install && npm run build')
             build_working_dir: Optional build working directory (relative to working_directory)
             modifies_code: Whether task modifies files (for cleanup)
-            max_turns: Maximum conversation turns
         """
-        super().__init__(id=id, max_turns=max_turns)
+        super().__init__(id=id)
         self.git_paths = git_paths
         self.iac_dir = iac_dir
         self.app_dir = app_dir

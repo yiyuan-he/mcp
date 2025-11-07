@@ -49,7 +49,6 @@ class ServiceInvestigationTask(Task):
         validation_rubric: list[str],
         mock_config: dict = None,
         fixtures_dir: Path = None,
-        max_turns: int = 15,
     ):
         """Initialize ServiceInvestigationTask.
 
@@ -60,11 +59,9 @@ class ServiceInvestigationTask(Task):
             validation_rubric: Criteria for validating investigation quality
             mock_config: Mock configuration for AWS APIs
             fixtures_dir: Base directory for fixture files
-            max_turns: Maximum conversation turns
         """
         super().__init__(
             id=id,
-            max_turns=max_turns,
             expected_tools=expected_tools,
             mock_config=mock_config,
             fixtures_dir=fixtures_dir,
@@ -147,7 +144,6 @@ Users are reporting that they cannot book appointments. Can you investigate what
                 }
             }
         },
-        max_turns=20,
     ),
     ServiceInvestigationTask(
         id='slo_breach_detailed_investigation',
@@ -197,6 +193,5 @@ and provide detailed information about their configuration and current status?""
                 }
             }
         },
-        max_turns=20,
     ),
 ]
