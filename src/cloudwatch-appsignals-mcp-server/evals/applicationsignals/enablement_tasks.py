@@ -152,12 +152,11 @@ My application directory is: {app_abs_path}"""
         """
         return [GitDiffCaptor(git_paths=self.git_paths)]
 
-    def get_validators(self, working_directory: Path, bedrock_client):
+    def get_validators(self, working_directory: Path):
         """Return validators for this task.
 
         Args:
             working_directory: Path to task working directory
-            bedrock_client: Boto3 Bedrock client for LLM calls
 
         Returns:
             List of validators (BuildValidator and LLMJudgeValidator)
@@ -175,7 +174,7 @@ My application directory is: {app_abs_path}"""
                 )
             )
 
-        llm_provider = BedrockLLMProvider(bedrock_client)
+        llm_provider = BedrockLLMProvider()
         validators.append(
             LLMJudgeValidator(
                 validation_prompt_type=ValidationPromptType.CODE_MODIFICATION,

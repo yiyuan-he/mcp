@@ -85,11 +85,11 @@ class ServiceInvestigationTask(Task):
             FinalResponseCaptor(),
         ]
 
-    def get_validators(self, working_directory: Path, bedrock_client):
+    def get_validators(self, working_directory: Path):
         """Return validators for this task."""
         from evals.core.llm_provider import BedrockLLMProvider
 
-        llm_provider = BedrockLLMProvider(bedrock_client)
+        llm_provider = BedrockLLMProvider()
 
         return [
             LLMJudgeValidator(
