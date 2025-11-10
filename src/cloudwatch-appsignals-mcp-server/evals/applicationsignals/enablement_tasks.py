@@ -40,6 +40,12 @@ SERVER_PATH = (
 # MCP server working directory (cloudwatch-appsignals-mcp-server root)
 SERVER_CWD = Path(__file__).parent.parent.parent
 
+# Prompt templates
+ENABLEMENT_PROMPT = """Enable Application Signals for my {language} {framework} on {platform}.
+
+My infrastructure as code directory is: {iac_abs_path}
+My application directory is: {app_abs_path}"""
+
 
 class EnablementTask(Task):
     """Task for evaluating Application Signals enablement.
@@ -54,6 +60,7 @@ class EnablementTask(Task):
     def __init__(
         self,
         id: str,
+        prompt_template: str,
         git_paths: list[str],
         iac_dir: str,
         app_dir: str,
@@ -70,6 +77,7 @@ class EnablementTask(Task):
 
         Args:
             id: Task identifier
+            prompt_template: Prompt passed to the AI agent doing Application Signals enablement
             git_paths: List of paths (relative to working_directory) for git diff/cleanup
             iac_dir: IaC directory path (relative to working_directory)
             app_dir: Application directory path (relative to working_directory)
@@ -83,6 +91,7 @@ class EnablementTask(Task):
             modifies_code: Whether task modifies files (for cleanup)
         """
         super().__init__(id=id)
+        self.prompt_template = prompt_template
         self.git_paths = git_paths
         self.iac_dir = iac_dir
         self.app_dir = app_dir
@@ -129,10 +138,13 @@ class EnablementTask(Task):
         iac_abs_path = working_directory / self.iac_dir
         app_abs_path = working_directory / self.app_dir
 
-        return f"""Enable Application Signals for my {self.language} {self.framework} on {self.platform}.
-
-My infrastructure as code directory is: {iac_abs_path}
-My application directory is: {app_abs_path}"""
+        return self.prompt_template.format(
+            language=self.language,
+            framework=self.framework,
+            platform=self.platform,
+            iac_abs_path=iac_abs_path,
+            app_abs_path=app_abs_path,
+        )
 
     @property
     def rubric(self) -> list[str]:
@@ -218,6 +230,7 @@ My application directory is: {app_abs_path}"""
 TASKS = [
     EnablementTask(
         id='ec2_python_flask',
+        prompt_template=ENABLEMENT_PROMPT,
         git_paths=[
             'get-enablement-guide-samples/infrastructure/ec2/cdk',
             'get-enablement-guide-samples/sample-apps/python/flask',
