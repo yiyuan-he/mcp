@@ -1,0 +1,114 @@
+{
+  "Service": {
+    "KeyAttributes": {
+      "Name": "CheckoutService",
+      "Type": "Service",
+      "Environment": "prod"
+    },
+    "AttributeMaps": [
+      {
+        "Platform": "AWS::ECS"
+      },
+      {
+        "Application": "ecommerce",
+        "Team": "checkout-team"
+      }
+    ],
+    "MetricReferences": [
+      {
+        "Namespace": "AWS/ApplicationSignals",
+        "MetricType": "AVAILABILITY",
+        "Dimensions": [
+          {
+            "Name": "Service",
+            "Value": "CheckoutService"
+          },
+          {
+            "Name": "Environment",
+            "Value": "prod"
+          }
+        ],
+        "MetricName": "Availability"
+      },
+      {
+        "Namespace": "AWS/ApplicationSignals",
+        "MetricType": "LATENCY",
+        "Dimensions": [
+          {
+            "Name": "Service",
+            "Value": "CheckoutService"
+          },
+          {
+            "Name": "Environment",
+            "Value": "prod"
+          }
+        ],
+        "MetricName": "Latency"
+      },
+      {
+        "Namespace": "AWS/ApplicationSignals",
+        "MetricType": "AVAILABILITY",
+        "Dimensions": [
+          {
+            "Name": "Service",
+            "Value": "CheckoutService"
+          },
+          {
+            "Name": "Operation",
+            "Value": "POST /checkout"
+          },
+          {
+            "Name": "Environment",
+            "Value": "prod"
+          }
+        ],
+        "MetricName": "Availability"
+      },
+      {
+        "Namespace": "AWS/ApplicationSignals",
+        "MetricType": "LATENCY",
+        "Dimensions": [
+          {
+            "Name": "Service",
+            "Value": "CheckoutService"
+          },
+          {
+            "Name": "Operation",
+            "Value": "POST /checkout"
+          },
+          {
+            "Name": "Environment",
+            "Value": "prod"
+          }
+        ],
+        "MetricName": "Latency"
+      },
+      {
+        "Namespace": "AWS/ApplicationSignals",
+        "MetricType": "AVAILABILITY",
+        "Dimensions": [
+          {
+            "Name": "Service",
+            "Value": "CheckoutService"
+          },
+          {
+            "Name": "Operation",
+            "Value": "GET /cart"
+          },
+          {
+            "Name": "Environment",
+            "Value": "prod"
+          }
+        ],
+        "MetricName": "Availability"
+      }
+    ],
+    "LogGroupReferences": [
+      {
+        "LogGroup": "/aws/ecs/checkout-service"
+      }
+    ]
+  },
+  "StartTime": "2025-01-09T00:00:00Z",
+  "EndTime": "2025-01-09T23:59:59Z"
+}
