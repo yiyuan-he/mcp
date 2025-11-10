@@ -24,6 +24,8 @@ from evals.core import (
     GitDiffCaptor,
     LLMJudgeValidator,
     Task,
+    ToolCallsCaptor,
+    ToolResultsCaptor,
     Validator,
     ValidationPromptType,
 )
@@ -118,6 +120,7 @@ class EnablementTask(Task):
             Path(__file__).parent.parent.parent.parent.parent
             / 'samples'
             / 'cloudwatch-appsignals-mcp-server'
+            / 'get-enablement-guide-samples'
         )
 
     def get_server_file(self) -> Path:
@@ -156,7 +159,7 @@ class EnablementTask(Task):
     def get_captors(self, working_directory: Path) -> list[Captor]:
         """Return captors for this task.
 
-        Captures git diff to evaluate code modifications.
+        Captures git diff, tool calls, and tool results for evaluation.
 
         Args:
             working_directory: Path to task working directory
@@ -164,7 +167,11 @@ class EnablementTask(Task):
         Returns:
             List of captors
         """
-        return [GitDiffCaptor(git_paths=self.git_paths)]
+        return [
+            GitDiffCaptor(git_paths=self.git_paths),
+            ToolCallsCaptor(),
+            ToolResultsCaptor(),
+        ]
 
     def get_validators(self, working_directory: Path) -> list[Validator]:
         """Return validators for this task.
@@ -234,16 +241,16 @@ TASKS = [
         id='ec2_python_flask',
         prompt_template=ENABLEMENT_PROMPT,
         git_paths=[
-            'get-enablement-guide-samples/infrastructure/ec2/cdk',
-            'get-enablement-guide-samples/sample-apps/python/flask',
+            'infrastructure/ec2/cdk',
+            'sample-apps/python/flask',
         ],
-        iac_dir='get-enablement-guide-samples/infrastructure/ec2/cdk',
-        app_dir='get-enablement-guide-samples/sample-apps/python/flask',
+        iac_dir='infrastructure/ec2/cdk',
+        app_dir='sample-apps/python/flask',
         language='python',
         framework='flask',
         platform='ec2',
         build_command='npm install && npm run build',
-        build_working_dir='get-enablement-guide-samples/infrastructure/ec2/cdk',
+        build_working_dir='infrastructure/ec2/cdk',
         expected_tools=['get_enablement_guide'],
         modifies_code=True,
         validation_rubric=[
