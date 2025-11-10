@@ -189,7 +189,35 @@ and provide detailed information about their configuration and current status?""
                             'response': 'investigation/get_service_level_objective/checkout_latency_slo.json',
                         },
                     ],
-                }
+                    'get_service': [
+                        {
+                            'request': {
+                                'KeyAttributes': {
+                                    'Name': 'CheckoutService',
+                                    'Type': 'Service',
+                                    'Environment': 'prod',
+                                }
+                            },
+                            'response': 'investigation/get_service/checkout_service_detail.json',
+                        }
+                    ],
+                },
+                'cloudwatch': {
+                    'get_metric_data': [
+                        {
+                            'request': {},
+                            'response': 'investigation/get_metric_data/checkout_service_metrics.json',
+                        }
+                    ],
+                },
+                'xray': {
+                    'get_trace_segment_destination': [
+                        {
+                            'request': {},
+                            'response': 'investigation/get_trace_segment_destination/cloudwatch_logs.json',
+                        }
+                    ],
+                },
             }
         },
     ),
